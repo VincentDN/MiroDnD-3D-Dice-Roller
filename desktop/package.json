@@ -1,0 +1,19 @@
+{
+  "name": "rollparty-desktop",
+  "productName": "Rollparty Desktop",
+  "version": "0.2.0",
+  "description": "Transparent, click-through D&D dice over Miro and other desktop apps",
+  "author": "Vincent De Nil",
+  "license": "MIT",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "package:win": "electron-packager . Rollparty --platform=win32 --arch=x64 --electron-version=44.3.0 --out=release --overwrite --icon=icon.ico --ignore=\"^/(release|tests|package-lock.json|README.md)$\""
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "44.3.0"
+  }
+}

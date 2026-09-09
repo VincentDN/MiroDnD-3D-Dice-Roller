@@ -14,11 +14,15 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 - Server-generated results using cryptographic rejection sampling. The 3D animation settles the matching numbered face upward. This is a deterministic visual roll, not a rigid-body physics simulation.
 - Every client polls the shared D1 room about every 1.2 seconds, queues new animations, and reconnects automatically. This is near-real-time synchronization, not WebSockets.
 
-## Transparent screen overlay
+## Transparent desktop window over Miro
+
+The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, click-through window in the **lower-left quarter** of your selected monitor. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop without blocking mouse input. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
+
+## OBS overlay
 
 Inside a room, select **Overlay → Copy overlay link**. Add this URL as an OBS **Browser Source**, set the width and height to your canvas (e.g. 1920 × 1080), and place the source above your Miro capture. The background is transparent; the dice and compact console are anchored to the bottom right.
 
-A regular browser window cannot be transparent and always-on-top over arbitrary desktop apps. OBS overlays appear in its composition/output. A transparent always-on-top browser host is needed for an overlay on your own desktop. This repository does not install a desktop host or integrate directly with Miro.
+A regular browser window cannot be transparent and always-on-top over arbitrary desktop apps. OBS overlays appear in its composition/output. Use the desktop host above for dice on your own desktop. The host works over Miro without modifying Miro or installing a Miro integration.
 
 The overlay is a viewer. Use the normal room page on your computer or phone to roll. Its console shows the three newest rolls. Existing history appears on connection, while only new rolls animate.
 

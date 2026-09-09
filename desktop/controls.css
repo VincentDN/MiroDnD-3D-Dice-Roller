@@ -1,0 +1,31 @@
+:root { color-scheme: dark; font: 16px/1.5 Arial, sans-serif; color: #eef3f6; background: #10151c; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header { display: flex; align-items: center; gap: 12px; padding: 22px 24px 16px; border-bottom: 1px solid #303b46; }
+h1 { font-size: 22px; margin: 0; letter-spacing: -.5px; }
+header p { color: #9fb1c1; font-size: 14px; margin: 2px 0 0; }
+main { padding: 0 24px 20px; }
+.intro { color: #c5d1d9; }
+button, input, select { font: inherit; border-radius: 7px; border: 1px solid #41515f; }
+button { padding: 9px 13px; color: #e5edf3; background: #1e2b36; cursor: pointer; }
+button:hover { background: #2c3b48; }
+button:disabled { opacity: .55; cursor: wait; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #b8f279; outline-offset: 3px; }
+.primary { width: 100%; background: #b8f279; border-color: #b8f279; color: #182312; font-weight: bold; }
+.primary:hover { background: #c8fa98; }
+form { margin-top: 18px; }
+label { display: block; font-size: 14px; color: #c2ced9; }
+.join { display: flex; gap: 8px; margin-top: 6px; }
+input[type=url] { width: 100%; min-width: 0; background: #151e28; padding: 9px; color: #fff; font-size: 14px; }
+.settings { margin: 20px 0 12px; border-top: 1px solid #303b46; padding-top: 16px; }
+select { display: block; width: 100%; margin: 6px 0 14px; padding: 8px; background: #151e28; font-size: 14px; }
+.check { display: flex; gap: 9px; align-items: center; margin: 10px 0; }
+input[type=checkbox] { width: 17px; height: 17px; accent-color: #b8f279; margin: 0; flex-shrink: 0; }
+#status { color: #b8f279; font-size: 14px; margin-bottom: 0; }
+#error { background: #402c30; color: #ffb5aa; padding: 10px; border-radius: 7px; font-size: 14px; overflow-wrap: anywhere; }
+.hint, details { font-size: 14px; color: #9fb1c1; }
+summary { cursor: pointer; }
+ul { padding-left: 19px; }
+li { margin-bottom: 6px; }
+.text { color: #b8f279; background: none; border: 0; padding: 5px 0; font-size: 14px; }
+footer { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 12px 24px; border-top: 1px solid #303b46; color: #9fb1c1; font-size: 12px; }
