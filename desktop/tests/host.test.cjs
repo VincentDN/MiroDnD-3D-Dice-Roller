@@ -19,7 +19,7 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
       this.webContents = new EventEmitter();
       this.webContents.mainFrame = { url: '' };
       Object.assign(this.webContents, {
-        send() {}, setWindowOpenHandler(fn) { this.popups = fn; },
+        send() {}, setAudioMuted(value) { this.muted=value; }, setWindowOpenHandler(fn) { this.popups = fn; },
         getURL: () => this.url,
         insertCSS: async () => 'css', removeInsertedCSS: async () => {},
       });
@@ -80,6 +80,8 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   await new Promise(setImmediate);
   assert.equal(overlay.url, config.roomURL(key, true));
   assert.equal(overlay.visible, true);
+  assert.equal(room.webContents.muted,true);
+  assert.equal(overlay.webContents.muted,false);
   assert.equal(overlay.inactive, true);
   assert.equal(overlay.focused, undefined);
   handlers.get('overlay:resize')({ sender:overlay.webContents, senderFrame:overlay.webContents.mainFrame }, 600, 500);

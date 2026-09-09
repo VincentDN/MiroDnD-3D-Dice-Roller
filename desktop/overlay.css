@@ -6,3 +6,5 @@ html, body { background: transparent !important; overflow: hidden !important; }
 .overlay-corner > .dice-canvas { position:relative !important; flex:1 1 0 !important; width:100% !important; height:0 !important; min-height:100px !important; }
 .overlay-console { flex:0 0 auto !important; max-height:100px !important; overflow:auto !important; margin:0 12px 12px !important; }
 .desktop-roll-controls { margin:0 8px 12px; }
+.overlay-corner > .dice-canvas { background:radial-gradient(ellipse at 50% 40%,#352044,#1b1226 75%) !important; border:1px solid #8950ad; border-radius:12px; }
+.overlay-console { max-height:18% !important; }

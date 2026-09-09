@@ -5,7 +5,7 @@ window.addEventListener('DOMContentLoaded', () => {
   grip.setAttribute('aria-label', 'Resize dice window');
   grip.title = 'Drag to resize';
   Object.assign(grip.style, { position:'fixed', right:'0', bottom:'0', width:'22px', height:'22px',
-    zIndex:'2147483647', cursor:'nwse-resize', background:'linear-gradient(135deg, transparent 45%, #b8f279 46%, #b8f279 53%, transparent 54%, transparent 65%, #b8f279 66%, #b8f279 73%, transparent 74%)',
+    zIndex:'2147483647', cursor:'nwse-resize', background:'linear-gradient(135deg, transparent 45%, #c44dff 46%, #c44dff 53%, transparent 54%, transparent 65%, #c44dff 66%, #c44dff 73%, transparent 74%)',
     touchAction:'none' });
   let drag = null;
   grip.addEventListener('pointerdown', e => {

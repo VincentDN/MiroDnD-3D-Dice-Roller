@@ -13,8 +13,17 @@ import {
   Minus,
   Check,
   Users,
+  Move,
+  Maximize2,
+  Volume2,
+  VolumeX,
+  BookmarkPlus,
+  X,
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
+import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
+import type { Motion } from '@/lib/dice-physics';
+import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
 type Player = { id: string; name: string; color: string; seen: number };
 type Credential = { id: string; secret: string };
@@ -22,7 +31,7 @@ const colors = [
   '#32a6c8',
   '#ab79ef',
   '#ef8267',
-  '#b8d96c',
+  '#d355ef',
   '#f3bd5b',
   '#ed82b5',
 ];
@@ -45,6 +54,41 @@ export default function Home() {
     [connected, setConnected] = useState(false),
     [notice, setNotice] = useState(''),
     [help, setHelp] = useState(false);
+  const [presets,setPresets]=useState<DicePreset[]>([]);
+  const [presetName,setPresetName]=useState('');
+  useEffect(()=> {
+    const sync=()=>{try{setPresets(readPresets(localStorage.getItem(PRESET_KEY)));}catch{}};
+    sync();window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);
+  },[]);
+  function persistPresets(next: DicePreset[]) {
+    setPresets(next);
+    try{localStorage.setItem(PRESET_KEY,JSON.stringify({version:1,presets:next}));}
+    catch{setError('Presets are available for this session; browser storage could not save them.');}
+  }
+  function savePreset() {
+    try {
+      const value=validatePreset(presetName,expression);
+      if(presets.length>=30)throw Error('Remove a saved combination before adding another (30 maximum).');
+      if(presets.some(p=>p.name===value.name))throw Error('Use a different name, or remove the existing combination first.');
+      setError('');persistPresets([...presets,{id:crypto.randomUUID(),...value}]);setPresetName('');
+    }catch(e){setError((e as Error).message);}
+  }
+  const [sound, setSound] = useState(true);
+  const [fresh, setFresh] = useState(false);
+  const [settledId, setSettledId] = useState('');
+  useEffect(()=> {
+    const sync=()=> { let value=true;try {value=localStorage.getItem('rollparty:sound')!=='off';}catch {} setSound(value);setSoundEnabled(value); };
+    sync();unlockSound();
+    window.addEventListener('pointerdown',unlockSound);window.addEventListener('keydown',unlockSound);
+    window.addEventListener('storage',sync);
+    return ()=> {window.removeEventListener('pointerdown',unlockSound);window.removeEventListener('keydown',unlockSound);window.removeEventListener('storage',sync);};
+  },[]);
+  function toggleSound() {
+    const value=!sound;setSound(value);setSoundEnabled(value);
+    try {localStorage.setItem('rollparty:sound',value?'on':'off');}catch {}
+    if(value)unlockSound();
+  }
+  const soundButton=<Button variant="ghost" size="sm" onClick={toggleSound} aria-label={sound?'Mute sounds':'Enable sounds'} title={sound?'Mute sounds':'Enable sounds'} aria-pressed={sound}>{sound?<Volume2 size={18}/>:<VolumeX size={18}/>}</Button>;
   const activeDuration = useRef(1800);
   const queue = useRef<Roll[]>([]),
     last = useRef(0),
@@ -103,6 +147,8 @@ export default function Home() {
     animationBusy.current = true;
     const next = queue.current.shift()!;
     activeDuration.current = next.physics ? next.physics.steps / 60 * 1000 : 1800;
+    setFresh(true);
+    setSettledId('');
     setActive(next);
     timer.current = setTimeout(() => {
       animationBusy.current = false;
@@ -137,6 +183,8 @@ export default function Home() {
     queue.current = [];
     initial.current = true;
     setHistory([]);
+    setFresh(false);
+    setSettledId('');
     setActive(null);
     setConnected(false);
     const poll = async () => {
@@ -202,7 +250,7 @@ export default function Home() {
     }
   }
   const roll = useCallback(
-    async (raw = expression) => {
+    async (raw = expression, rollLabel = label) => {
       if (!cred) throw Error('Join this room first.');
       setBusy(true);
       setError('');
@@ -211,9 +259,9 @@ export default function Home() {
         if (
           !retry.current ||
           retry.current.expression !== raw ||
-          retry.current.label !== label
+          retry.current.label !== rollLabel
         )
-          retry.current = { id: crypto.randomUUID(), expression: raw, label };
+          retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel };
         const data = await api({ action: 'roll', ...retry.current });
         retry.current = null;
         ingest([data]);
@@ -258,6 +306,15 @@ export default function Home() {
     } catch {}
     return () => lifecycle.abort();
   }, [roll, cred, overlay]);
+  async function throwDice(parent: string, release: Motion[]) {
+    if (!cred || busy) return;
+    unlockSound();setBusy(true);setError('');
+    try {
+      const result=await api({action:'throw',id:crypto.randomUUID(),parent,release,label:'Mouse throw'});
+      ingest([result]);
+    } catch(e) {setError((e as Error).message);}
+    finally {setBusy(false);}
+  }
   async function saveProfile() {
     setBusy(true);
     setError('');
@@ -321,34 +378,14 @@ export default function Home() {
           .slice(0, compact ? 3 : 100)
           .map((r) => (
             <article key={r.id} className="roll-entry">
-              <div className="avatar-dot" style={{ background: r.color }} />
-              <div>
-                <div className="entry-top">
-                  <strong>{r.name}</strong>
-                  <time>
-                    {new Date(r.created).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </time>
-                </div>
-                <p>
-                  {r.label || r.expression}
-                  <span>{r.label ? ' · ' + r.expression : ''}</span>
-                </p>
-                <small>
-                  {r.dice.map((d, i) => (
-                    <span key={i} className={!d.kept ? 'discarded' : ''}>
-                      {i ? ' + ' : ''}
-                      {d.value}
-                    </span>
-                  ))}
-                  {r.modifier !== 0
-                    ? (r.modifier > 0 ? ' + ' : ' − ') + Math.abs(r.modifier)
-                    : ''}
-                </small>
+              <div className="roll-sentence">
+                <strong style={{color:r.color}}>{r.name}</strong>{' '}rolls{' '}
+                <code>{r.expression}</code>{' = '}
+                <span className="roll-values">{r.dice.map((d,i)=><span key={i} className={!d.kept?'discarded':''} aria-label={!d.kept?`${d.value}, discarded`:undefined}>{i?' + ':''}{d.value}</span>)}
+                {r.modifier!==0 ? (r.modifier>0?' + ':' − ')+Math.abs(r.modifier):''}</span>
+                {' = '}<b className="roll-total">{r.total}</b>
               </div>
-              <b style={{ color: r.color }}>{r.total}</b>
+              <div className="roll-meta">{r.label&&<span>{r.label}</span>}{r.parent&&r.label!=="Mouse throw"&&<span>Mouse throw</span>}<time>{new Date(r.created).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time></div>
             </article>
           ))
       )}
@@ -364,21 +401,31 @@ export default function Home() {
     return (
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         <div className="overlay-corner">
-          {desktop && <div className="desktop-drag-bar">Rollparty <span>Drag here to move · resize at the corner</span></div>}
-          {(active || desktop) && <DiceStage roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} />}
+          {desktop && <div className="desktop-drag-bar">Rollparty <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
+          {(active || desktop) && <DiceStage roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />}
           {desktop && <section className="desktop-roll-controls">
             {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
               <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
               <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
             </form> : <>
-              <div className="desktop-dice-picker">{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
+              <div className="desktop-dice-picker">{soundButton}{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
               <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
                 <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
                 <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
               </form>
             </>}
-            <p className="desktop-result">{active ? `${active.name}: ${active.expression} = ${active.total}` : 'Ready to roll'}</p>
-            <small>Drag settled dice to move them. Moving dice does not change the recorded roll.</small>
+            {cred && <div className="desktop-presets">
+              <form onSubmit={e=>{e.preventDefault();savePreset();}}>
+                <input aria-label="Name for saved dice combination" placeholder="Save this combination as…" value={presetName} maxLength={32} onChange={e=>setPresetName(e.target.value)}/>
+                <Button type="submit" size="sm" variant="outline" title="Save on this device" aria-label="Save current dice combination"><BookmarkPlus size={18}/></Button>
+              </form>
+              {presets.length>0&&<div className="preset-list">{presets.map(p=><span className="preset" key={p.id}>
+                <button disabled={busy||!connected} title={`${p.expression} · roll ${p.name}`} onClick={()=>{setExpression(p.expression);roll(p.expression,p.name).catch(()=>{});}}>{p.name}<small>{p.expression}</small></button>
+                <button className="remove-preset" aria-label={`Remove ${p.name}`} onClick={()=>persistPresets(presets.filter(item=>item.id!==p.id))}><X size={12}/></button>
+              </span>)}</div>}
+            </div>}
+            <p className="desktop-result">{active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
+            <small>Drag to move. Throw firmly to record a new roll.</small>
             {error && <p className="error" role="alert">{error}</p>}
           </section>}
           <div className="overlay-console">
@@ -405,6 +452,7 @@ export default function Home() {
           <Dices /> rollparty<span> / D&D</span>
         </a>
         <div className="header-actions">
+          {soundButton}
           {key && (
             <>
               <Button
@@ -580,14 +628,14 @@ export default function Home() {
                     <span className="live-dot" /> SHARED DICE TRAY
                     <span>3D · LIVE ROLLS</span>
                   </div>
-                  <DiceStage roll={active} color={color} />
+                  <DiceStage roll={active} color={color} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />
                   <div className="tray-result">
                     {active ? (
                       <>
                         <span>
                           {active.name} rolled {active.expression}
                         </span>
-                        <strong>{active.total}</strong>
+                        <strong>{settledId===active.id?active.total:"…"}</strong>
                         <small>{active.label || 'Let the story unfold.'}</small>
                       </>
                     ) : (

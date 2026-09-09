@@ -7,7 +7,7 @@ const { SITE_ORIGIN, isRoomSite, roomKey, roomURL, lowerLeftBounds } = require('
 const panelURL = pathToFileURL(path.join(__dirname, 'controls.html')).href;
 const overlayCSS = fs.readFileSync(path.join(__dirname, 'overlay.css'), 'utf8');
 let panel, room, overlay, tray;
-let key = '', displayId, visible = true, history = false, quitting = false;
+let key = '', displayId, visible = true, history = true, quitting = false;
 let overlayReady = false, overlayError = '', historyCSS, navigation = 0;
 const shortcuts = [];
 
@@ -21,6 +21,9 @@ function state() {
   };
 }
 function broadcast() {
+  // The overlay is the audible window while visible; avoid two copies of each cue.
+  if(room && !room.isDestroyed())room.webContents.setAudioMuted(Boolean(key && visible && overlayReady));
+  if(overlay && !overlay.isDestroyed())overlay.webContents.setAudioMuted(!visible);
   if (panel && !panel.isDestroyed()) panel.webContents.send('desktop:state', state());
   if (tray) tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Roll dice / open room', click: showRoom },
@@ -65,7 +68,7 @@ function secureRemote(win) {
 }
 function remotePreferences() {
   return { nodeIntegration: false, contextIsolation: true, sandbox: true,
-    webSecurity: true, webviewTag: false, backgroundThrottling: false,
+    webSecurity: true, webviewTag: false, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required',
     partition: 'persist:rollparty' };
 }
 async function applyHistory() {

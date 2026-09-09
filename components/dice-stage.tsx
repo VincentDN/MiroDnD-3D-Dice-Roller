@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import * as T from 'three';
 import * as C from 'cannon-es';
 import { geometry, facesOf } from '@/lib/dice-geometry';
-import { createTable, physicalSides, STEP, hull } from '@/lib/dice-physics';
+import { replayTable, STEP, hull, snapshotMotion, isDeliberateThrow, type Motion } from '@/lib/dice-physics';
 import type { Roll } from '@/lib/dice';
+import { trayFrustum } from '@/lib/dice-camera';
+import { diceImpact, confirmedSound, unlockSound } from '@/lib/dice-audio';
 function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: boolean }, color: string) {
         const group = new T.Group(),
           g = geometry(die.sides),
@@ -83,10 +85,14 @@ function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: bo
   }
   return group;
 }
-export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true }: {
-  roll: Roll | null; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean;
+export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, onSettled, onThrow }: {
+  roll: Roll | null; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[]) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const settledCallback = useRef(onSettled);
+  settledCallback.current = onSettled;
+  const throwCallback = useRef(onThrow);
+  throwCallback.current = onThrow;
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     const el = host.current!;
@@ -97,7 +103,8 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     renderer.shadowMap.enabled = true;
     el.appendChild(renderer.domElement);
     const scene = new T.Scene(), camera = new T.OrthographicCamera(-8,8,5,-5,.1,100);
-    camera.position.set(0, 18, 8); camera.lookAt(0,0,0);
+    camera.position.set(0, 20, .001); camera.lookAt(0,0,0);
+    camera.updateMatrixWorld();
     scene.add(new T.HemisphereLight(0xcdefff,0x294351,3));
     const light = new T.DirectionalLight(0xffffff,4); light.position.set(-3,12,5); light.castShadow = true;
     light.shadow.camera.left=-30; light.shadow.camera.right=30; light.shadow.camera.top=30; light.shadow.camera.bottom=-30;
@@ -106,9 +113,13 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
     const logical = roll?.dice || [{sides:20,value:20,kept:true}];
     const dice = logical.flatMap(d => d.sides === 100 ? [{...d,sides:10,tens:true},{...d,sides:10,units:true}] : [d]);
-    const table = createTable(physicalSides(logical.map(d => d.sides)), roll?.physics?.seed ?? 123);
+    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release);
     const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); scene.add(group); return group; });
     let step = 0, replay = Boolean(roll?.physics), dragged = false;
+    let notified = false;
+    const notify = () => {
+      if (roll && !notified) { notified=true; settledCallback.current?.(roll.id); confirmedSound(roll,fresh); }
+    };
     const finish = () => {
       if (roll?.physics) table.bodies.forEach((body,i) => {
         const pose = roll.physics!.poses[i];
@@ -117,6 +128,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         body.velocity.setZero(); body.angularVelocity.setZero(); body.sleep();
       });
       replay = false;
+      notify();
     };
     if (!roll?.physics) {
       // Legacy history is placed at rest, never disguised as a new physical roll.
@@ -129,7 +141,11 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         const low = Math.min(...hull(dice[i].sides).vertices.map(v => body.quaternion.vmult(v).y));
         body.position.y = -low+.01; body.velocity.setZero();body.angularVelocity.setZero();body.sleep();
       });
+      notify();
     } else if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
+    for (const body of table.bodies) body.addEventListener('collide', (event: { contact: C.ContactEquation }) => {
+      if ((replay && fresh) || dragged) diceImpact(Math.abs(event.contact.getImpactVelocityAlongNormal()));
+    });
     const ray = new T.Raycaster(), pointer = new T.Vector2(), dragPlane = new T.Plane(new T.Vector3(0,1,0),-1.6);
     const anchor = new C.Body({mass:0, type:C.Body.KINEMATIC, collisionFilterGroup:0, collisionFilterMask:0});
     table.world.addBody(anchor);
@@ -147,6 +163,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         T.MathUtils.clamp(hit.z,-table.depth/2+1.1,table.depth/2-1.1));
     }
     function down(e: PointerEvent) {
+      unlockSound();
       if (!interactive || replay || e.button !== 0 || constraint) return;
       locate(e);
       const hits = ray.intersectObjects(groups,true);
@@ -161,7 +178,14 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
       table.world.addConstraint(constraint); pointerId=e.pointerId;
       renderer.domElement.setPointerCapture(e.pointerId); el.style.cursor='grabbing'; e.preventDefault();
     }
-    function up() {
+    function up(event?: Event) {
+      if (event?.type === 'pointerup' && constraint && roll && isDeliberateThrow(constraint.bodyA)) {
+        for (const body of table.bodies) {
+          if(body.velocity.length()>35)body.velocity.scale(35/body.velocity.length(),body.velocity);
+          if(body.angularVelocity.length()>70)body.angularVelocity.scale(70/body.angularVelocity.length(),body.angularVelocity);
+        }
+        throwCallback.current?.(roll.id,table.bodies.map(snapshotMotion));
+      }
       if (constraint) table.world.removeConstraint(constraint);
       constraint=null;
       if (pointerId!==null && renderer.domElement.hasPointerCapture(pointerId)) renderer.domElement.releasePointerCapture(pointerId);
@@ -172,9 +196,13 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     renderer.domElement.addEventListener('pointerup',up); renderer.domElement.addEventListener('pointercancel',up);
     renderer.domElement.addEventListener('lostpointercapture',up); window.addEventListener('blur',up);
     let w=1,h=1;
-    const resize=()=> { w=Math.max(1,el.clientWidth);h=Math.max(1,el.clientHeight);renderer.setSize(w,h); };
+    const resize=()=> {
+      w=Math.max(1,el.clientWidth);h=Math.max(1,el.clientHeight);renderer.setSize(w,h);
+      Object.assign(camera,trayFrustum(table.width,table.depth,w/h,sizeMultiplier));
+      camera.updateProjectionMatrix();
+    };
     const observer=new ResizeObserver(resize);observer.observe(el);resize();
-    let frame=0, previous=performance.now(), accumulator=0, viewExtent=8;
+    let frame=0, previous=performance.now(), accumulator=0;
     const animate=(now:number)=> {
       accumulator += Math.min((now-previous)/1000,.1);previous=now;
       while(accumulator>=STEP) {
@@ -183,16 +211,6 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         accumulator-=STEP;
       }
       table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
-      // Double the default projection scale in the desktop tray; expand only as
-      // needed to keep a large pool fully visible rather than clipping dice.
-      const aspect=w/h;
-      let extent=Math.max(table.depth*.72,table.width/aspect)/sizeMultiplier;
-      let required=0;
-      groups.forEach(g=> { const p=g.position.clone().applyMatrix4(camera.matrixWorldInverse); required=Math.max(required,Math.abs(p.y)+1.5,(Math.abs(p.x)+1.5)/aspect); });
-      extent=Math.max(extent/2,required);
-      if (!constraint) viewExtent=extent;
-      extent=viewExtent;
-      camera.left=-extent*aspect;camera.right=extent*aspect;camera.top=extent;camera.bottom=-extent;camera.updateProjectionMatrix();
       el.style.cursor=replay?'progress':constraint?'grabbing':interactive?'grab':'default';
       renderer.render(scene,camera); frame=requestAnimationFrame(animate);
     };
@@ -204,8 +222,8 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         materials.forEach(m=> {if(m){(m as T.MeshBasicMaterial).map?.dispose();m.dispose();}}); });
       renderer.dispose();renderer.domElement.remove();
     };
-  }, [roll,transparent,color,sizeMultiplier,interactive]);
-  return <div className="dice-canvas" ref={host} aria-label="Physics dice tray: drag settled dice to move them">
+  }, [roll,transparent,color,sizeMultiplier,interactive,fresh]);
+  return <div className="dice-canvas" ref={host} aria-label="Physics dice tray: drag to move, throw firmly to record a new roll">
     {failed && <p className="render-error">3D graphics unavailable. Your roll result is still shown below.</p>}
   </div>;
 }
