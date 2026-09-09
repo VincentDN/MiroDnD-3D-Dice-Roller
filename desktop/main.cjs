@@ -158,7 +158,15 @@ else {
     const remoteSession = session.fromPartition('persist:rollparty');
     remoteSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     remoteSession.setPermissionCheckHandler(() => false);
-    remoteSession.on('will-download', (event) => event.preventDefault());
+    remoteSession.on('will-download', (event, item, contents) => {
+      // Only our generated Markdown notebooks may leave the remote app as files.
+      const allowed = contents && isRoomSite(contents.getURL()) &&
+        item.getURL().startsWith('blob:' + SITE_ORIGIN + '/') &&
+        item.getMimeType() === 'text/markdown' &&
+        /^VincentsVibeRoller-rolls-\d{4}-\d{2}-\d{2}\.md$/.test(item.getFilename());
+      if (!allowed) event.preventDefault();
+      else item.setSaveDialogOptions({title:'Save roll notebook',filters:[{name:'Markdown',extensions:['md']}]});
+    });
     panel = new BrowserWindow({ width: 490, height: 650, minWidth: 440, minHeight: 600,
       title: 'VincentsVibeRoller Desktop', backgroundColor: '#10151c', autoHideMenuBar: true,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true,

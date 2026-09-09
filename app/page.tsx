@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
+import RollNotebook from '@/components/roll-notebook';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion } from '@/lib/dice-physics';
 import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
@@ -90,7 +91,6 @@ export default function Home() {
     if(value)unlockSound();
   }
   const soundButton=<Button variant="ghost" size="sm" onClick={toggleSound} aria-label={sound?'Mute sounds':'Enable sounds'} title={sound?'Mute sounds':'Enable sounds'} aria-pressed={sound}>{sound?<Volume2 size={18}/>:<VolumeX size={18}/>}</Button>;
-  const activeDuration = useRef(1800);
   const queue = useRef<Roll[]>([]),
     last = useRef(0),
     seen = useRef(new Set<string>()),
@@ -147,15 +147,18 @@ export default function Home() {
     if (animationBusy.current || !queue.current.length) return;
     animationBusy.current = true;
     const next = queue.current.shift()!;
-    activeDuration.current = next.physics ? next.physics.steps / 60 * 1000 : 1800;
     setFresh(true);
     setSettledId('');
     setActive(next);
+  }, []);
+  const onDiceSettled = useCallback((id: string) => {
+    setSettledId(id);
+    if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       animationBusy.current = false;
       play();
-    }, Math.max(2600, (activeDuration.current || 0) + 500));
-  }, []);
+    }, 150);
+  }, [play]);
   const ingest = useCallback(
     (rolls: Roll[], animate = true) => {
       const fresh = rolls.filter((r) => !seen.current.has(r.id));
@@ -406,7 +409,7 @@ export default function Home() {
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         <div className="overlay-corner">
           {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
-          {(active || desktop) && <DiceStage pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />}
+          {(active || desktop) && <DiceStage pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
           {desktop && <section className="desktop-roll-controls">
             {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
               <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
@@ -444,6 +447,7 @@ export default function Home() {
                 {error}
               </p>
             )}
+            {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
             {consoleList(true)}
           </div>
         </div>
@@ -632,7 +636,7 @@ export default function Home() {
                     <span className="live-dot" /> SHARED DICE TRAY
                     <span>3D · LIVE ROLLS</span>
                   </div>
-                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />
+                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
                   <div className="tray-result">
                     {active ? (
                       <>
@@ -805,6 +809,7 @@ export default function Home() {
                     <h2>Roll console</h2>
                     <span className="live">LIVE</span>
                   </div>
+                  {cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
                   {consoleList()}
                 </section>
               </aside>

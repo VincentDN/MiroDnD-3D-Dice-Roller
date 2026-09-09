@@ -57,4 +57,8 @@ Remote pages use a sandbox with Node integration disabled and no preload bridge.
 
 Open Miro and a room, roll from a second device, and confirm numbered dice appear without raising the controls. Roll directly in the overlay, drag dice, move the header, resize the corner grip, and verify mouse input stays in the overlay when the pointer is inside it. Check Ctrl+Shift+D, monitor selection, monitor disconnection, reconnect, and Quit. These native checks cannot be proven by a cross-platform package build.
 
-The v0.5 overlay creates dice at twice the physical size, with matching collision shapes. Large combinations expand the tray to keep all dice visible. Pressing Roll starts a local tumble immediately while the server calculates the shared result. The result remains unconfirmed until the server response.
+The v0.5 overlay creates dice at twice the physical size, with matching collision shapes. Large combinations expand the tray to keep all dice visible. Pressing Roll immediately shows a rolling indicator while the server calculates the shared result. Each result animates once; queued animations advance when the dice actually finish, not on a wall-clock timer.
+
+## Roll notebook
+
+Open **My roll notes** in the roll console to add a comment to any of your own rolls. The latest 1,000 are saved on this device for the room and player. **Save Markdown** exports the rolls, individual values, totals, timestamps and comments as a `.md` file. The Windows app opens a save dialog. Save a file periodically for a lasting session record.

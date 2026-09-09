@@ -48,3 +48,13 @@
 .compact .roll-entry { padding:6px 10px; }
 .compact .roll-entry b { font-size:14px; }
 .desktop-overlay .overlay-console { max-height:18%; }
+
+.dice-canvas { position:relative; }
+.roll-waiting { position:absolute; top:12px; left:50%; transform:translateX(-50%); padding:6px 14px; border-radius:20px; background:#251432e8; color:#ecc9ff; font-size:14px; z-index:1; pointer-events:none; }
+.roll-notebook { margin:10px 0; font-size:14px; }
+.roll-notebook summary { cursor:pointer; color:#dfafff; padding:6px 0; }
+.roll-notebook > button { border:1px solid #9854bd; border-radius:6px; padding:6px 12px; margin:6px 0; }
+.roll-notebook > button:disabled { opacity:.45; }
+.note-entries { max-height:280px; overflow:auto; }
+.roll-note { display:flex; flex-direction:column; gap:5px; margin:12px 0; }
+.roll-note textarea { width:100%; background:#15121d; color:#efe7f5; border:1px solid #59426c; border-radius:6px; padding:8px; resize:vertical; font-size:14px; }

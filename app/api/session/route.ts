@@ -49,7 +49,7 @@ export async function GET(req: Request) {
         .all(),
       db
         .prepare(
-          'SELECT seq,data FROM (SELECT seq,data FROM rolls WHERE room=? AND seq>? ORDER BY seq DESC LIMIT 100) ORDER BY seq',
+          'SELECT seq,data,player FROM (SELECT seq,data,player FROM rolls WHERE room=? AND seq>? ORDER BY seq DESC LIMIT 100) ORDER BY seq',
         )
         .bind(room.id, after)
         .all(),
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
     return json({
       room: { name: room.name },
       players: p.results,
-      rolls: r.results.map((x: any) => ({ ...JSON.parse(x.data), seq: x.seq })),
+      rolls: r.results.map((x: any) => ({ ...JSON.parse(x.data), seq: x.seq, playerId: x.player })),
     });
   } catch (e) {
     return json({ error: (e as Error).message }, 400);
@@ -130,7 +130,7 @@ export async function POST(req: Request) {
         db.prepare('SELECT created FROM rolls WHERE room=? AND player=? ORDER BY seq DESC LIMIT 1').bind(room.id,player.id),
       ]);
       const existing=checks[0].results[0] as {seq:number;data:string} | undefined;
-      if(existing) return json({...JSON.parse(existing.data),seq:existing.seq});
+      if(existing) return json({...JSON.parse(existing.data),seq:existing.seq,playerId:player.id});
       const recent=checks[1].results[0] as {created:number} | undefined;
       if (recent && now - recent.created < 500)
         return json(
@@ -147,6 +147,7 @@ export async function POST(req: Request) {
       } else outcome=evaluatePhysical(b.expression,b.diceScale === 2 ? 2 : 1);
       const roll = {
         id: b.id,
+        playerId: player.id,
         ...outcome,
         name: player.name,
         color: player.color,
