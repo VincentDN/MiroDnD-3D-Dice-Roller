@@ -50,6 +50,7 @@ export default function Home() {
   const [expression, setExpression] = useState('1d20'),
     [label, setLabel] = useState(''),
     [busy, setBusy] = useState(false),
+    [pendingExpression, setPendingExpression] = useState<string | undefined>(),
     [error, setError] = useState(''),
     [connected, setConnected] = useState(false),
     [notice, setNotice] = useState(''),
@@ -256,13 +257,15 @@ export default function Home() {
       setError('');
       try {
         parseExpression(raw);
+        unlockSound();
+        setPendingExpression(raw);
         if (
           !retry.current ||
           retry.current.expression !== raw ||
           retry.current.label !== rollLabel
         )
           retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel };
-        const data = await api({ action: 'roll', ...retry.current });
+        const data = await api({ action: 'roll', ...retry.current, diceScale: desktop ? 2 : 1 });
         retry.current = null;
         ingest([data]);
         return { id: data.id, total: data.total, dice: data.dice };
@@ -271,9 +274,10 @@ export default function Home() {
         throw e;
       } finally {
         setBusy(false);
+        setPendingExpression(undefined);
       }
     },
-    [cred, expression, label, api, ingest],
+    [cred, expression, label, api, ingest, desktop],
   );
   useEffect(() => {
     const context = (document as any).modelContext;
@@ -401,8 +405,8 @@ export default function Home() {
     return (
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         <div className="overlay-corner">
-          {desktop && <div className="desktop-drag-bar">Rollparty <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
-          {(active || desktop) && <DiceStage roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />}
+          {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
+          {(active || desktop) && <DiceStage pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />}
           {desktop && <section className="desktop-roll-controls">
             {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
               <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
@@ -424,13 +428,13 @@ export default function Home() {
                 <button className="remove-preset" aria-label={`Remove ${p.name}`} onClick={()=>persistPresets(presets.filter(item=>item.id!==p.id))}><X size={12}/></button>
               </span>)}</div>}
             </div>}
-            <p className="desktop-result">{active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
+            <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
             <small>Drag to move. Throw firmly to record a new roll.</small>
             {error && <p className="error" role="alert">{error}</p>}
           </section>}
           <div className="overlay-console">
             <div className="console-head">
-              <Dices size={16} /> ROLLPARTY{' '}
+              <Dices size={16} /> VincentsVibeRoller{' '}
               <span className={connected ? 'live' : 'offline'}>
                 {connected ? 'LIVE' : 'CONNECTING'}
               </span>
@@ -449,7 +453,7 @@ export default function Home() {
     <main className="app">
       <header>
         <a className="brand" href="/">
-          <Dices /> rollparty<span> / D&D</span>
+          <Dices /> VincentsVibeRoller<span> / D&D</span>
         </a>
         <div className="header-actions">
           {soundButton}
@@ -628,7 +632,7 @@ export default function Home() {
                     <span className="live-dot" /> SHARED DICE TRAY
                     <span>3D · LIVE ROLLS</span>
                   </div>
-                  <DiceStage roll={active} color={color} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />
+                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} fresh={fresh} onSettled={setSettledId} onThrow={throwDice} />
                   <div className="tray-result">
                     {active ? (
                       <>

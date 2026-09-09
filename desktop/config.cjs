@@ -8,7 +8,7 @@ function isRoomSite(raw) {
 }
 
 function roomKey(raw) {
-  if (!isRoomSite(raw)) throw new Error('Paste an invite or overlay link from Rollparty.');
+  if (!isRoomSite(raw)) throw new Error('Paste an invite or overlay link from VincentsVibeRoller.');
   const key = new URLSearchParams(new URL(raw).hash.slice(1)).get('room');
   if (!key || !/^[a-f0-9]{64}$/.test(key)) throw new Error('This link does not contain a valid room.');
   return key;
@@ -21,8 +21,8 @@ function roomURL(key, overlay = false) {
 
 // Electron screen coordinates are device-independent pixels, including on mixed-DPI monitors.
 function lowerLeftBounds(workArea) {
-  const width = Math.min(520, Math.floor(workArea.width * .4));
-  const height = Math.min(440, Math.floor(workArea.height * .7));
+  const width = Math.min(680, workArea.width);
+  const height = Math.min(760, workArea.height);
   return { x: workArea.x, y: workArea.y + workArea.height - height, width, height };
 }
 

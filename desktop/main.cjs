@@ -30,7 +30,7 @@ function broadcast() {
     { label: 'Desktop controls', click: showPanel },
     { label: 'Show dice over Miro', type: 'checkbox', checked: visible, click: (item) => setVisible(item.checked) },
     { type: 'separator' },
-    { label: 'Quit Rollparty', click: () => app.quit() },
+    { label: 'Quit VincentsVibeRoller', click: () => app.quit() },
   ]));
 }
 function showPanel() { panel.show(); panel.focus(); }
@@ -121,7 +121,7 @@ function followRoom(url) {
 }
 function createRoom() {
   room = new BrowserWindow({ width: 1160, height: 850, minWidth: 480, minHeight: 500,
-    title: 'Rollparty - roll dice', backgroundColor: '#10151c', show: false,
+    title: 'VincentsVibeRoller - roll dice', backgroundColor: '#10151c', show: false,
     autoHideMenuBar: true, webPreferences: remotePreferences() });
   room.setMenu(null);
   secureRemote(room);
@@ -160,7 +160,7 @@ else {
     remoteSession.setPermissionCheckHandler(() => false);
     remoteSession.on('will-download', (event) => event.preventDefault());
     panel = new BrowserWindow({ width: 490, height: 650, minWidth: 440, minHeight: 600,
-      title: 'Rollparty Desktop', backgroundColor: '#10151c', autoHideMenuBar: true,
+      title: 'VincentsVibeRoller Desktop', backgroundColor: '#10151c', autoHideMenuBar: true,
       webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true,
         nodeIntegration: false, sandbox: true, webviewTag: false } });
     panel.setMenu(null);
@@ -171,7 +171,7 @@ else {
       else if (!quitting) app.quit();
     });
     overlay = new BrowserWindow({ ...lowerLeftBounds(screen.getPrimaryDisplay().workArea),
-      title: 'Rollparty dice overlay', transparent: true, frame: false,
+      title: 'VincentsVibeRoller dice overlay', transparent: true, frame: false,
       backgroundColor: '#00000000', alwaysOnTop: true, hasShadow: false,
       focusable: true, skipTaskbar: true, resizable: true, movable: true,
       minWidth: 340, minHeight: 320,
@@ -230,7 +230,7 @@ else {
     ]) shortcuts.push({ label, accelerator, available: globalShortcut.register(accelerator, action) });
     try {
       tray = new Tray(path.join(__dirname, 'icon.png'));
-      tray.setToolTip('Rollparty - dice over Miro');
+      tray.setToolTip('VincentsVibeRoller - dice over Miro');
       tray.on('double-click', showPanel);
     } catch { /* The panel remains accessible if the OS has no notification area. */ }
     broadcast();

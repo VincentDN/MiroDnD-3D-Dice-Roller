@@ -124,20 +124,14 @@ export async function POST(req: Request) {
     if (b.action === 'roll' || b.action === 'throw') {
       if (typeof b.id !== 'string' || !/^[0-9a-f-]{36}$/.test(b.id))
         throw Error('Invalid roll request.');
-      const existing = await db
-        .prepare(
-          'SELECT seq,data FROM rolls WHERE id=? AND room=? AND player=?',
-        )
-        .bind(b.id, room.id, player.id)
-        .first<{ seq: number; data: string }>();
-      if (existing)
-        return json({ ...JSON.parse(existing.data), seq: existing.seq });
-      const recent = await db
-        .prepare(
-          'SELECT created FROM rolls WHERE room=? AND player=? ORDER BY seq DESC LIMIT 1',
-        )
-        .bind(room.id, player.id)
-        .first<{ created: number }>();
+      // Both checks depend only on the authenticated player; one database round trip.
+      const checks = await db.batch([
+        db.prepare('SELECT seq,data FROM rolls WHERE id=? AND room=? AND player=?').bind(b.id,room.id,player.id),
+        db.prepare('SELECT created FROM rolls WHERE room=? AND player=? ORDER BY seq DESC LIMIT 1').bind(room.id,player.id),
+      ]);
+      const existing=checks[0].results[0] as {seq:number;data:string} | undefined;
+      if(existing) return json({...JSON.parse(existing.data),seq:existing.seq});
+      const recent=checks[1].results[0] as {created:number} | undefined;
       if (recent && now - recent.created < 500)
         return json(
           { error: 'Give the dice a moment before rolling again.' },
@@ -148,8 +142,9 @@ export async function POST(req: Request) {
         if (typeof b.parent !== 'string' || !/^[0-9a-f-]{36}$/.test(b.parent)) throw Error('Choose an existing roll to throw again.');
         const source=await db.prepare('SELECT data FROM rolls WHERE id=? AND room=?').bind(b.parent,room.id).first<{data:string}>();
         if (!source) throw Error('This roll is no longer available.');
-        outcome={ ...evaluateThrow(JSON.parse(source.data).expression,b.release), parent:b.parent };
-      } else outcome=evaluatePhysical(b.expression);
+        const parent=JSON.parse(source.data);
+        outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1), parent:b.parent };
+      } else outcome=evaluatePhysical(b.expression,b.diceScale === 2 ? 2 : 1);
       const roll = {
         id: b.id,
         ...outcome,

@@ -41,10 +41,10 @@ function tone(frequency: number, time: number, duration: number, volume: number,
   oscillator.type=brass?'sawtooth':'sine';
   oscillator.frequency.setValueAtTime(frequency,time);
   if (brass) { oscillator.frequency.setValueAtTime(frequency*.985,time); oscillator.frequency.exponentialRampToValueAtTime(frequency,time+.035); }
-  filter.type='lowpass';filter.Q.value=brass?1.1:.4;
-  filter.frequency.setValueAtTime(brass?900:6000,time);
-  if (brass) {filter.frequency.linearRampToValueAtTime(3600,time+.045);filter.frequency.exponentialRampToValueAtTime(1400,time+duration);}
-  gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(volume,time+.012);
+  filter.type='lowpass';filter.Q.value=.4;
+  filter.frequency.setValueAtTime(brass?500:1600,time);
+  if (brass) {filter.frequency.linearRampToValueAtTime(1400,time+.07);filter.frequency.exponentialRampToValueAtTime(650,time+duration);}
+  gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(volume,time+.025);
   gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
   oscillator.connect(filter);filter.connect(gain);gain.connect(output!);
   track(oscillator,[filter,gain]);oscillator.start(time);oscillator.stop(time+duration+.03);
@@ -54,14 +54,14 @@ export function diceImpact(speed: number) {
   const ctx=context!, now=ctx.currentTime;
   if (now-lastImpact < .045 || voices.size>24) return;
   lastImpact=now;
-  const length=.065, buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*length),ctx.sampleRate);
+  const length=.12, buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*length),ctx.sampleRate);
   const samples=buffer.getChannelData(0);
-  for(let i=0;i<samples.length;i++) samples[i]=(Math.random()*2-1)*Math.exp(-i/(ctx.sampleRate*.012));
+  for(let i=0;i<samples.length;i++) samples[i]=(Math.random()*2-1)*Math.exp(-i/(ctx.sampleRate*.025));
   const noise=ctx.createBufferSource(), filter=ctx.createBiquadFilter(), gain=ctx.createGain();
-  noise.buffer=buffer;filter.type='bandpass';filter.frequency.value=1800+Math.random()*1600;filter.Q.value=.7;
-  gain.gain.value=Math.min(.32,.045+speed*.023);
+  noise.buffer=buffer;filter.type='lowpass';filter.frequency.value=550+Math.random()*300;filter.Q.value=.4;
+  gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(Math.min(.24,.035+speed*.018),now+.006);gain.gain.exponentialRampToValueAtTime(.0001,now+length);
   noise.connect(filter);filter.connect(gain);gain.connect(output!);track(noise,[filter,gain]);noise.start(now);
-  tone(320+Math.random()*220,now,.045,Math.min(.15,speed*.013));
+  tone(150+Math.random()*90,now,.11,Math.min(.19,speed*.018));
 }
 export function confirmedSound(roll: Roll, fresh: boolean) {
   // Claim before checking playback, so a blocked/muted historical cue is never replayed later.
@@ -69,9 +69,9 @@ export function confirmedSound(roll: Roll, fresh: boolean) {
   const now=context!.currentTime+.015;
   if(resultCue(roll)==='trumpet') {
     // Original synthesized brass fanfare; no external recordings or network requests.
-    for(const [i,f] of [523.25,659.25,783.99,1046.5].entries()) {
+    for(const [i,f] of [261.63,329.63,392,523.25].entries()) {
       const at=now+i*.14, length=i===3?.6:.21;
       tone(f,at,length,.13,true);tone(f*.997,at+.004,length,.07,true);
     }
-  } else { tone(1174.66,now,.28,.16);tone(2349.32,now,.16,.035); }
+  } else { tone(523.25,now,.32,.13);tone(659.25,now+.075,.36,.09); }
 }

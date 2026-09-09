@@ -4,7 +4,7 @@ export type Roll = {
   id: string;
   seq?: number;
   parent?: string;
-  physics?: { seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
+  physics?: { diceScale?: number; seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
   name: string;
   color: string;
   expression: string;

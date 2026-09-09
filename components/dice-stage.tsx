@@ -4,7 +4,7 @@ import * as T from 'three';
 import * as C from 'cannon-es';
 import { geometry, facesOf } from '@/lib/dice-geometry';
 import { replayTable, STEP, hull, snapshotMotion, isDeliberateThrow, type Motion } from '@/lib/dice-physics';
-import type { Roll } from '@/lib/dice';
+import { parseExpression, type Roll } from '@/lib/dice';
 import { trayFrustum } from '@/lib/dice-camera';
 import { diceImpact, confirmedSound, unlockSound } from '@/lib/dice-audio';
 function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: boolean }, color: string) {
@@ -85,8 +85,8 @@ function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: bo
   }
   return group;
 }
-export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, onSettled, onThrow }: {
-  roll: Roll | null; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[]) => void;
+export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow }: {
+  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[]) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const settledCallback = useRef(onSettled);
@@ -111,14 +111,16 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     scene.add(light);
     const floor = new T.Mesh(new T.PlaneGeometry(100,100), new T.ShadowMaterial({opacity:.22}));
     floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
-    const logical = roll?.dice || [{sides:20,value:20,kept:true}];
+    const pending = Boolean(pendingExpression);
+    const diceScale = pending ? (sizeMultiplier > 1 ? 2 : 1) : (roll?.physics?.diceScale ?? (roll ? 1 : sizeMultiplier > 1 ? 2 : 1));
+    const logical = pendingExpression ? parseExpression(pendingExpression).groups.flatMap(g=>Array.from({length:g.count},()=>({sides:g.sides,value:1,kept:true}))) : roll?.dice || [{sides:20,value:20,kept:true}];
     const dice = logical.flatMap(d => d.sides === 100 ? [{...d,sides:10,tens:true},{...d,sides:10,units:true}] : [d]);
-    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release);
-    const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); scene.add(group); return group; });
-    let step = 0, replay = Boolean(roll?.physics), dragged = false;
+    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, pending ? undefined : roll?.physics?.release, diceScale);
+    const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); group.scale.setScalar(diceScale); scene.add(group); return group; });
+    let step = 0, replay = !pending && Boolean(roll?.physics), dragged = false;
     let notified = false;
     const notify = () => {
-      if (roll && !notified) { notified=true; settledCallback.current?.(roll.id); confirmedSound(roll,fresh); }
+      if (!pending && roll && !notified) { notified=true; settledCallback.current?.(roll.id); confirmedSound(roll,fresh); }
     };
     const finish = () => {
       if (roll?.physics) table.bodies.forEach((body,i) => {
@@ -130,7 +132,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
       replay = false;
       notify();
     };
-    if (!roll?.physics) {
+    if (!pending && !roll?.physics) {
       // Legacy history is placed at rest, never disguised as a new physical roll.
       let index = 0;
       const values = logical.flatMap(d => d.sides===100 ? [Math.floor((d.value%100)/10)+1,d.value%10+1] : [d.value]);
@@ -139,14 +141,14 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         const q = new T.Quaternion().setFromUnitVectors(new T.Vector3(normal.x,normal.y,normal.z),new T.Vector3(0,dice[i].sides===4?-1:1,0));
         body.quaternion.set(q.x,q.y,q.z,q.w);
         const low = Math.min(...hull(dice[i].sides).vertices.map(v => body.quaternion.vmult(v).y));
-        body.position.y = -low+.01; body.velocity.setZero();body.angularVelocity.setZero();body.sleep();
+        body.position.y = -low*diceScale+.01; body.velocity.setZero();body.angularVelocity.setZero();body.sleep();
       });
       notify();
-    } else if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
+    } else if (!pending && matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
     for (const body of table.bodies) body.addEventListener('collide', (event: { contact: C.ContactEquation }) => {
-      if ((replay && fresh) || dragged) diceImpact(Math.abs(event.contact.getImpactVelocityAlongNormal()));
+      if (pending || (replay && fresh) || dragged) diceImpact(Math.abs(event.contact.getImpactVelocityAlongNormal()));
     });
-    const ray = new T.Raycaster(), pointer = new T.Vector2(), dragPlane = new T.Plane(new T.Vector3(0,1,0),-1.6);
+    const ray = new T.Raycaster(), pointer = new T.Vector2(), dragPlane = new T.Plane(new T.Vector3(0,1,0),-1.6*diceScale);
     const anchor = new C.Body({mass:0, type:C.Body.KINEMATIC, collisionFilterGroup:0, collisionFilterMask:0});
     table.world.addBody(anchor);
     let constraint: C.PointToPointConstraint | null = null, pointerId: number | null = null;
@@ -159,12 +161,12 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
       if (!constraint) return;
       locate(e); const hit = new T.Vector3();
       if (ray.ray.intersectPlane(dragPlane,hit)) anchor.position.set(
-        T.MathUtils.clamp(hit.x,-table.width/2+1.1,table.width/2-1.1),1.6,
-        T.MathUtils.clamp(hit.z,-table.depth/2+1.1,table.depth/2-1.1));
+        T.MathUtils.clamp(hit.x,-table.width/2+1.1*diceScale,table.width/2-1.1*diceScale),1.6*diceScale,
+        T.MathUtils.clamp(hit.z,-table.depth/2+1.1*diceScale,table.depth/2-1.1*diceScale));
     }
     function down(e: PointerEvent) {
       unlockSound();
-      if (!interactive || replay || e.button !== 0 || constraint) return;
+      if (!interactive || pending || replay || e.button !== 0 || constraint) return;
       locate(e);
       const hits = ray.intersectObjects(groups,true);
       if (!hits.length) return;
@@ -206,12 +208,12 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     const animate=(now:number)=> {
       accumulator += Math.min((now-previous)/1000,.1);previous=now;
       while(accumulator>=STEP) {
-        if (replay || dragged) table.world.step(STEP);
-        if (replay && ++step >= roll!.physics!.steps) finish();
+        if (pending || replay || dragged) table.world.step(STEP);
+        if (!pending && replay && ++step >= roll!.physics!.steps) finish();
         accumulator-=STEP;
       }
       table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
-      el.style.cursor=replay?'progress':constraint?'grabbing':interactive?'grab':'default';
+      el.style.cursor=(pending || replay)?'progress':constraint?'grabbing':interactive?'grab':'default';
       renderer.render(scene,camera); frame=requestAnimationFrame(animate);
     };
     frame=requestAnimationFrame(animate);
@@ -222,7 +224,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         materials.forEach(m=> {if(m){(m as T.MeshBasicMaterial).map?.dispose();m.dispose();}}); });
       renderer.dispose();renderer.domElement.remove();
     };
-  }, [roll,transparent,color,sizeMultiplier,interactive,fresh]);
+  }, [roll,transparent,color,sizeMultiplier,interactive,fresh,pendingExpression]);
   return <div className="dice-canvas" ref={host} aria-label="Physics dice tray: drag to move, throw firmly to record a new roll">
     {failed && <p className="render-error">3D graphics unavailable. Your roll result is still shown below.</p>}
   </div>;
