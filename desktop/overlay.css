@@ -1,0 +1,25 @@
+/* The native window itself occupies the lower-left quarter. This also adapts
+   the existing hosted OBS view, so no website deployment is needed. */
+html, body { background: transparent !important; overflow: hidden !important; }
+body > .app, .app { display: none !important; }
+.overlay-root { inset: 0 !important; background: transparent !important; }
+.overlay-corner {
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.overlay-corner > .dice-canvas {
+  position: relative !important;
+  flex: 1 1 0 !important;
+  width: 100% !important;
+  height: 0 !important;
+  min-height: 0 !important;
+}
+.overlay-console {
+  flex: 0 0 auto !important;
+  margin: 0 12px 12px !important;
+  max-height: 35% !important;
+  overflow: auto !important;
+}

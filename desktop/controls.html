@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>Rollparty Desktop</title>
+  <link rel="stylesheet" href="controls.css">
+  <script src="controls.js" defer></script>
+</head>
+<body>
+  <header><img src="icon.png" width="40" height="40" alt=""><div><h1>Rollparty Desktop</h1><p>Dice over Miro</p></div></header>
+  <main>
+    <p class="intro">Your dice float in the lower-left quarter of your monitor. Click and drag straight through them to use Miro.</p>
+    <button id="roller" class="primary">Create a room / open roller</button>
+    <form id="join">
+      <label for="link">Or paste your party’s invite link</label>
+      <div class="join"><input id="link" type="url" required placeholder="https://rollparty-dnd…/#room=…" autocomplete="off" spellcheck="false"><button type="submit">Join</button></div>
+    </form>
+    <div class="settings">
+      <label for="display">Monitor with Miro</label>
+      <select id="display" aria-label="Monitor with Miro"></select>
+      <label class="check"><input id="visible" type="checkbox" checked>Show dice over other apps</label>
+      <label class="check"><input id="history" type="checkbox">Show recent roll results below the dice</label>
+    </div>
+    <p id="status" role="status">Create or join a room to start.</p>
+    <p id="error" role="alert" hidden></p>
+    <button id="retry" class="text">Reconnect</button>
+    <p class="hint">Roll in the room window, then return to Miro. Your party’s new rolls appear here automatically. You can also roll from your phone using the same invite.</p>
+    <details><summary>Keyboard shortcuts</summary><ul id="shortcuts"></ul></details>
+  </main>
+  <footer><span>Closing this panel keeps the dice running.</span><button id="quit" class="text">Quit</button></footer>
+</body>
+</html>
