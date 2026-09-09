@@ -7,7 +7,7 @@ const { EventEmitter } = require('node:events');
 const config = require('../config.cjs');
 
 // Exercise host orchestration without pretending this verifies the Windows compositor.
-test('room changes, click-through window, IPC isolation, monitor fallback and visibility', async () => {
+test('room changes, interactive window, IPC isolation, monitor fallback and visibility', async () => {
   const windows = [], handlers = new Map();
   let displays = [
     { id: 1, label: 'Main', bounds: { width: 1920, height: 1080 }, workArea: { x: 0, y: 0, width: 1920, height: 1040 } },
@@ -28,6 +28,7 @@ test('room changes, click-through window, IPC isolation, monitor fallback and vi
     setMenu() {} setAlwaysOnTop(value) { this.top = value; }
     setIgnoreMouseEvents(value) { this.passthrough = value; }
     setVisibleOnAllWorkspaces() {} setBounds(bounds) { this.bounds = bounds; }
+    getBounds() { return this.bounds || {x:this.options.x, y:this.options.y,width:this.options.width,height:this.options.height}; }
     hide() { this.visible = false; } show() { this.visible = true; }
     showInactive() { this.visible = true; this.inactive = true; }
     focus() { this.focused = true; } isDestroyed() { return false; }
@@ -43,12 +44,12 @@ test('room changes, click-through window, IPC isolation, monitor fallback and vi
     setAppUserModelId() {}, quit() {},
   });
   const screen = Object.assign(new EventEmitter(), {
-    getAllDisplays: () => displays, getPrimaryDisplay: () => displays[0],
+    getAllDisplays: () => displays, getPrimaryDisplay: () => displays[0], getDisplayMatching: () => displays[0],
   });
   class Tray extends EventEmitter { setToolTip() {} setContextMenu() {} destroy() {} }
   const electron = { app, screen, BrowserWindow: Window, Tray,
     Menu: { buildFromTemplate: (x) => x },
-    ipcMain: { handle: (name, fn) => handlers.set(name, fn) },
+    ipcMain: { handle: (name, fn) => handlers.set(name, fn), on: (name, fn) => handlers.set(name, fn) },
     globalShortcut: { register: () => true, unregisterAll() {} },
     session: { fromPartition: () => Object.assign(new EventEmitter(), {
       setPermissionRequestHandler() {}, setPermissionCheckHandler() {},
@@ -65,10 +66,12 @@ test('room changes, click-through window, IPC isolation, monitor fallback and vi
     sender: panel.webContents, senderFrame: panel.webContents.mainFrame,
   }, ...args);
   assert.equal(overlay.options.transparent, true);
-  assert.equal(overlay.options.focusable, false);
-  assert.equal(overlay.passthrough, true);
+  assert.equal(overlay.options.focusable, true);
+  assert.equal(overlay.options.resizable, true);
+  assert.equal(overlay.options.movable, true);
+  assert.equal(overlay.passthrough, false);
   assert.equal(overlay.top, true);
-  assert.equal(overlay.options.webPreferences.preload, undefined);
+  assert(overlay.options.webPreferences.preload.endsWith('overlay-preload.cjs'));
   assert.equal(room.options.webPreferences.preload, undefined);
   assert.equal(room.options.webPreferences.sandbox, true);
   assert.throws(() => handlers.get('desktop:quit')({ sender: room.webContents, senderFrame: room.webContents.mainFrame }), /Untrusted/);
@@ -79,6 +82,10 @@ test('room changes, click-through window, IPC isolation, monitor fallback and vi
   assert.equal(overlay.visible, true);
   assert.equal(overlay.inactive, true);
   assert.equal(overlay.focused, undefined);
+  handlers.get('overlay:resize')({ sender:overlay.webContents, senderFrame:overlay.webContents.mainFrame }, 600, 500);
+  assert.equal(overlay.bounds.width, 600);
+  assert.equal(overlay.bounds.height, 500);
+  assert(overlay.bounds.y + overlay.bounds.height <= 1040);
   call('visible', false);
   assert.equal(overlay.visible, false);
   call('visible', true);

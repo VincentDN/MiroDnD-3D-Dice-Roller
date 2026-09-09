@@ -11,12 +11,12 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 - Ability scores: `4d6kh3`. Keep highest/lowest supports any pool.
 - Up to 40 logical dice in one roll; d100 displays a tens and a units d10. 00 + 0 means 100.
 - Per-player names and colors; persistent shared history (latest 100 rolls shown).
-- Server-generated results using cryptographic rejection sampling. The 3D animation settles the matching numbered face upward. This is a deterministic visual roll, not a rigid-body physics simulation.
+- Server-simulated rigid-body throws using cannon-es: gravity, convex dice collisions, friction and restitution determine the face values. Clients replay the seeded throw and settle to the authoritative physical poses. Drag settled dice locally; recorded shared results do not change. These are simulated physical dice, not cryptographically uniform dice draws.
 - Every client polls the shared D1 room about every 1.2 seconds, queues new animations, and reconnects automatically. This is near-real-time synchronization, not WebSockets.
 
 ## Transparent desktop window over Miro
 
-The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, click-through window in the **lower-left quarter** of your selected monitor. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop without blocking mouse input. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
+The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, interactive window initially in the **lower left** of your selected monitor. Drag its header to move it, or use its corner grip to resize it. Roll directly in the overlay. Dice use a 2× projection scale, with large pools automatically framed to avoid clipping. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop while receiving mouse input inside its own window. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
 
 ## OBS overlay
 
@@ -45,7 +45,7 @@ If your Wrangler resolves relative paths against its configuration directory, us
 
 - `pnpm build`: Cloudflare Worker and browser assets.
 - `pnpm exec tsc --noEmit`: type validation.
-- `node --experimental-strip-types --test tests/dice.test.ts tests/geometry.test.ts`: dice rules and face geometry.
+- `node --experimental-strip-types --test tests/dice.test.ts tests/geometry.test.ts tests/physics.test.ts`: dice rules and face geometry.
 - `node tests/session.mjs`: integration test against the running local server. Creates an isolated test room, verifies two players observe identical results, retry deduplication, profile persistence, and access isolation.
 
 Stack: React, Vinext, Three.js, Cloudflare Workers and D1. The logical Sites binding is in `.openai/hosting.json`; schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
