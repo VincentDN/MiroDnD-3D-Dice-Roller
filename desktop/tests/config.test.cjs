@@ -7,7 +7,7 @@ test('normal and OBS invites open the same room without carrying extra URL param
   for (const suffix of ['', '&overlay=1', '&untrusted=value']) {
     assert.equal(roomKey(`${SITE_ORIGIN}/#room=${key}${suffix}`), key);
   }
-  assert.equal(roomURL(key, true), `${SITE_ORIGIN}/#room=${key}&overlay=1`);
+  assert.equal(roomURL(key, true), `${SITE_ORIGIN}/#room=${key}&overlay=1&desktop=1`);
 });
 test('rejects credentials, untrusted hosts, protocols, paths and malformed capabilities', () => {
   const key = 'a'.repeat(64);
@@ -21,11 +21,11 @@ test('rejects credentials, untrusted hosts, protocols, paths and malformed capab
   assert.equal(isRoomSite(`${SITE_ORIGIN}/`), true);
   assert.throws(() => roomURL('bad'));
 });
-test('lower-left quarter respects taskbars, negative monitor coordinates and odd sizes', () => {
+test('compact lower-left window respects taskbars, negative monitor coordinates and odd sizes', () => {
   assert.deepEqual(lowerLeftBounds({ x: 0, y: 0, width: 1920, height: 1040 }),
-    { x: 0, y: 520, width: 960, height: 520 });
+    { x: 0, y: 600, width: 520, height: 440 });
   assert.deepEqual(lowerLeftBounds({ x: -1920, y: -200, width: 1920, height: 1080 }),
-    { x: -1920, y: 340, width: 960, height: 540 });
+    { x: -1920, y: 440, width: 520, height: 440 });
   assert.deepEqual(lowerLeftBounds({ x: 48, y: 24, width: 1365, height: 743 }),
-    { x: 48, y: 396, width: 682, height: 371 });
+    { x: 48, y: 327, width: 520, height: 440 });
 });

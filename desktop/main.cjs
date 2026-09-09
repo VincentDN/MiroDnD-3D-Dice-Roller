@@ -31,10 +31,17 @@ function broadcast() {
   ]));
 }
 function showPanel() { panel.show(); panel.focus(); }
-function positionOverlay() {
+function positionOverlay(reset = false) {
   const display = screen.getAllDisplays().find((d) => d.id === displayId) || screen.getPrimaryDisplay();
   displayId = display.id;
-  if (overlay && !overlay.isDestroyed()) overlay.setBounds(lowerLeftBounds(display.workArea));
+  if (overlay && !overlay.isDestroyed()) {
+    const b = reset === true ? lowerLeftBounds(display.workArea) : overlay.getBounds();
+    const a = display.workArea;
+    b.width = Math.min(b.width, a.width); b.height = Math.min(b.height, a.height);
+    b.x = Math.min(Math.max(b.x, a.x), a.x+a.width-b.width);
+    b.y = Math.min(Math.max(b.y, a.y), a.y+a.height-b.height);
+    overlay.setBounds(b);
+  }
   broadcast();
 }
 function setVisible(next) {
@@ -163,15 +170,28 @@ else {
     overlay = new BrowserWindow({ ...lowerLeftBounds(screen.getPrimaryDisplay().workArea),
       title: 'Rollparty dice overlay', transparent: true, frame: false,
       backgroundColor: '#00000000', alwaysOnTop: true, hasShadow: false,
-      focusable: false, skipTaskbar: true, resizable: false, movable: false,
-      show: false, webPreferences: remotePreferences() });
+      focusable: true, skipTaskbar: true, resizable: true, movable: true,
+      minWidth: 340, minHeight: 320,
+      show: false, webPreferences: { ...remotePreferences(), preload: path.join(__dirname, 'overlay-preload.cjs') } });
     overlay.setAlwaysOnTop(true, 'screen-saver');
-    overlay.setIgnoreMouseEvents(true);
+    overlay.setIgnoreMouseEvents(false);
     overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     secureRemote(overlay);
+    overlay.on('moved', () => { displayId = screen.getDisplayMatching(overlay.getBounds()).id; broadcast(); });
     overlay.webContents.on('render-process-gone', () => {
       overlayReady = false; overlay.hide();
       overlayError = 'The dice window stopped. Choose Reconnect to reopen it.'; broadcast();
+    });
+    ipcMain.on('overlay:resize', (event, width, height) => {
+      if (event.sender !== overlay.webContents || event.senderFrame !== overlay.webContents.mainFrame || !isRoomSite(event.senderFrame.url)) return;
+      if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+      const area = screen.getDisplayMatching(overlay.getBounds()).workArea;
+      const b = overlay.getBounds();
+      b.width = Math.min(area.width, Math.max(340, Math.round(width)));
+      b.height = Math.min(area.height, Math.max(320, Math.round(height)));
+      b.x = Math.min(Math.max(b.x, area.x), area.x+area.width-b.width);
+      b.y = Math.min(Math.max(b.y, area.y), area.y+area.height-b.height);
+      overlay.setBounds(b);
     });
     createRoom();
     handle('desktop:state', state);
@@ -184,7 +204,7 @@ else {
     handle('desktop:show-room', showRoom);
     handle('desktop:display', (id) => {
       if (!screen.getAllDisplays().some((d) => d.id === id)) throw new Error('Monitor unavailable.');
-      displayId = id; positionOverlay();
+      displayId = id; positionOverlay(true);
     });
     handle('desktop:visible', (value) => {
       if (typeof value !== 'boolean') throw new Error('Invalid visibility.');

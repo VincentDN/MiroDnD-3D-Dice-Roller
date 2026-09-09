@@ -3,6 +3,7 @@ export type Die = { sides: number; value: number; kept: boolean };
 export type Roll = {
   id: string;
   seq?: number;
+  physics?: { seed: number; steps: number; poses: { p: number[]; q: number[] }[] };
   name: string;
   color: string;
   expression: string;

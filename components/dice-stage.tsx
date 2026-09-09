@@ -1,110 +1,15 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import * as T from 'three';
+import * as C from 'cannon-es';
 import { geometry, facesOf } from '@/lib/dice-geometry';
+import { createTable, physicalSides, STEP, hull } from '@/lib/dice-physics';
 import type { Roll } from '@/lib/dice';
-export default function DiceStage({
-  roll,
-  transparent = false,
-  color = '#32a6c8',
-}: {
-  roll: Roll | null;
-  transparent?: boolean;
-  color?: string;
-}) {
-  const host = useRef<HTMLDivElement>(null);
-  const update = useRef<(r: Roll | null) => void>(() => {});
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    const el = host.current!;
-    let renderer: T.WebGLRenderer;
-    try {
-      renderer = new T.WebGLRenderer({ alpha: true, antialias: true });
-    } catch {
-      setFailed(true);
-      return;
-    }
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = T.PCFSoftShadowMap;
-    el.appendChild(renderer.domElement);
-    const scene = new T.Scene(),
-      camera = new T.PerspectiveCamera(34, 1, 0.1, 100);
-    camera.position.set(0, 9, 11);
-    camera.lookAt(0, 0, 0);
-    scene.add(new T.HemisphereLight(0xcdefff, 0x294351, 3));
-    const light = new T.DirectionalLight(0xffffff, 4);
-    light.position.set(-3, 10, 5);
-    light.castShadow = true;
-    light.shadow.mapSize.set(1024, 1024);
-    scene.add(light);
-    const floor = new T.Mesh(
-      new T.PlaneGeometry(100, 100),
-      new T.ShadowMaterial({ opacity: transparent ? 0.18 : 0.35 }),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -0.02;
-    floor.receiveShadow = true;
-    scene.add(floor);
-    let objects: {
-        group: T.Group;
-        target: T.Quaternion;
-        start: T.Quaternion;
-        x: number;
-        z: number;
-        phase: number;
-        height: number;
-      }[] = [],
-      start = 0,
-      frame = 0,
-      disposed = false;
-    function clear() {
-      for (const o of objects) {
-        scene.remove(o.group);
-        o.group.traverse((child: any) => {
-          child.geometry?.dispose();
-          const mats = Array.isArray(child.material)
-            ? child.material
-            : [child.material];
-          for (const m of mats) {
-            m?.map?.dispose();
-            m?.dispose();
-          }
-        });
-      }
-      objects = [];
-    }
-    function show(r: Roll | null) {
-      clear();
-      const dice = r
-        ? r.dice.flatMap((d) =>
-            d.sides === 100
-              ? [
-                  {
-                    ...d,
-                    sides: 10,
-                    value: Math.floor((d.value % 100) / 10) + 1,
-                    tens: true,
-                  },
-                  { ...d, sides: 10, value: (d.value % 10) + 1, units: true },
-                ]
-              : [d],
-          )
-        : [
-            { sides: 20, value: 20, kept: true },
-            { sides: 12, value: 12, kept: true },
-          ];
-      const cols = Math.min(8, Math.ceil(Math.sqrt(dice.length * 1.7))),
-        rows = Math.ceil(dice.length / cols);
-      const spread = dice.length > 12 ? 1.75 : 2.2;
-      camera.position.set(0, Math.max(9, rows * 2.5), Math.max(11, cols * 2));
-      camera.lookAt(0, 0, 0);
-      dice.forEach((die: any, i) => {
+function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: boolean }, color: string) {
         const group = new T.Group(),
           g = geometry(die.sides),
           faces = facesOf(g),
-          c = new T.Color(r?.color || color);
+          c = new T.Color(color);
         if (!die.kept) c.multiplyScalar(0.42);
         const material = new T.MeshStandardMaterial({
           color: c,
@@ -125,7 +30,7 @@ export default function DiceStage({
           }),
         );
         group.add(edges);
-        faces.forEach((f, j) => {
+        if (die.sides !== 4) faces.forEach((f, j) => {
           const canvas = document.createElement('canvas');
           canvas.width = 128;
           canvas.height = 128;
@@ -160,107 +65,147 @@ export default function DiceStage({
           label.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), f.normal);
           group.add(label);
         });
-        const normal = faces[Math.min(die.value - 1, faces.length - 1)].normal;
-        const target = new T.Quaternion().setFromUnitVectors(
-          normal,
-          new T.Vector3(0, 1, 0),
-        );
-        target.premultiply(
-          new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), -0.2),
-        );
-        // Set the actual lowest vertex on the table after orienting the chosen face up.
-        const pos = g.getAttribute('position');
-        let min = 0;
-        for (let j = 0; j < pos.count; j++)
-          min = Math.min(
-            min,
-            new T.Vector3().fromBufferAttribute(pos, j).applyQuaternion(target)
-              .y,
-          );
-        const row = Math.floor(i / cols),
-          inRow = Math.min(cols, dice.length - row * cols);
-        const x = ((i % cols) - (inRow - 1) / 2) * spread,
-          z = (row - (rows - 1) / 2) * spread;
-        const initial = new T.Quaternion().setFromEuler(
-          new T.Euler(i + 2, 1.5 * i, 2.4),
-        );
-        objects.push({
-          group,
-          target,
-          start: initial,
-          x,
-          z,
-          phase: i * 0.17,
-          height: -min,
-        });
-        scene.add(group);
+  if (die.sides === 4) {
+    // Each vertex carries the value of the opposite face on all three adjacent faces.
+    faces.forEach(f => f.points.forEach(vertex => {
+      const value = faces.findIndex(other => !other.points.some(p => p.distanceTo(vertex) < 0.001)) + 1;
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 100px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(value), 64, 64);
+      const texture = new T.CanvasTexture(canvas); texture.colorSpace = T.SRGBColorSpace;
+      const label = new T.Mesh(new T.PlaneGeometry(.32, .32), new T.MeshBasicMaterial({map: texture, transparent: true, depthWrite: false}));
+      label.position.copy(f.center).lerp(vertex, .58).addScaledVector(f.normal, .012);
+      const y = vertex.clone().sub(f.center).normalize(), x = new T.Vector3().crossVectors(y, f.normal).normalize();
+      label.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x, y, f.normal));
+      group.add(label);
+    }));
+  }
+  return group;
+}
+export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true }: {
+  roll: Roll | null; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean;
+}) {
+  const host = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const el = host.current!;
+    let renderer: T.WebGLRenderer;
+    try { renderer = new T.WebGLRenderer({alpha: true, antialias: true}); }
+    catch { setFailed(true); return; }
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor(0, 0);
+    renderer.shadowMap.enabled = true;
+    el.appendChild(renderer.domElement);
+    const scene = new T.Scene(), camera = new T.OrthographicCamera(-8,8,5,-5,.1,100);
+    camera.position.set(0, 18, 8); camera.lookAt(0,0,0);
+    scene.add(new T.HemisphereLight(0xcdefff,0x294351,3));
+    const light = new T.DirectionalLight(0xffffff,4); light.position.set(-3,12,5); light.castShadow = true;
+    light.shadow.camera.left=-30; light.shadow.camera.right=30; light.shadow.camera.top=30; light.shadow.camera.bottom=-30;
+    scene.add(light);
+    const floor = new T.Mesh(new T.PlaneGeometry(100,100), new T.ShadowMaterial({opacity:.22}));
+    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+    const logical = roll?.dice || [{sides:20,value:20,kept:true}];
+    const dice = logical.flatMap(d => d.sides === 100 ? [{...d,sides:10,tens:true},{...d,sides:10,units:true}] : [d]);
+    const table = createTable(physicalSides(logical.map(d => d.sides)), roll?.physics?.seed ?? 123);
+    const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); scene.add(group); return group; });
+    let step = 0, replay = Boolean(roll?.physics), dragged = false;
+    const finish = () => {
+      if (roll?.physics) table.bodies.forEach((body,i) => {
+        const pose = roll.physics!.poses[i];
+        body.position.set(pose.p[0],pose.p[1],pose.p[2]);
+        body.quaternion.set(pose.q[0],pose.q[1],pose.q[2],pose.q[3]);
+        body.velocity.setZero(); body.angularVelocity.setZero(); body.sleep();
       });
-      start = performance.now();
+      replay = false;
+    };
+    if (!roll?.physics) {
+      // Legacy history is placed at rest, never disguised as a new physical roll.
+      let index = 0;
+      const values = logical.flatMap(d => d.sides===100 ? [Math.floor((d.value%100)/10)+1,d.value%10+1] : [d.value]);
+      table.bodies.forEach((body,i) => {
+        const normal = hull(dice[i].sides).normals[values[index++]-1];
+        const q = new T.Quaternion().setFromUnitVectors(new T.Vector3(normal.x,normal.y,normal.z),new T.Vector3(0,dice[i].sides===4?-1:1,0));
+        body.quaternion.set(q.x,q.y,q.z,q.w);
+        const low = Math.min(...hull(dice[i].sides).vertices.map(v => body.quaternion.vmult(v).y));
+        body.position.y = -low+.01; body.velocity.setZero();body.angularVelocity.setZero();body.sleep();
+      });
+    } else if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
+    const ray = new T.Raycaster(), pointer = new T.Vector2(), dragPlane = new T.Plane(new T.Vector3(0,1,0),-1.6);
+    const anchor = new C.Body({mass:0, type:C.Body.KINEMATIC, collisionFilterGroup:0, collisionFilterMask:0});
+    table.world.addBody(anchor);
+    let constraint: C.PointToPointConstraint | null = null, pointerId: number | null = null;
+    function locate(e: PointerEvent) {
+      const bounds = el.getBoundingClientRect();
+      pointer.set((e.clientX-bounds.left)/bounds.width*2-1, -(e.clientY-bounds.top)/bounds.height*2+1);
+      ray.setFromCamera(pointer,camera);
     }
-    update.current = show;
-    show(roll);
-    const resize = () => {
-      const w = el.clientWidth,
-        h = el.clientHeight;
-      renderer.setSize(w, h);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    };
-    const ro = new ResizeObserver(resize);
-    ro.observe(el);
-    resize();
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const animate = (now: number) => {
-      if (disposed) return;
-      const t = reduced ? 1 : Math.min(1, (now - start) / 1800);
-      for (const o of objects) {
-        const ease = 1 - Math.pow(1 - t, 3);
-        o.group.position.set(
-          o.x + (1 - ease) * Math.sin(o.phase + 1) * 5,
-          o.height + Math.abs(Math.sin(t * Math.PI * 3)) * 3 * (1 - t),
-          o.z + (1 - ease) * 4,
-        );
-        if (t < 0.75) {
-          o.group.quaternion
-            .copy(o.start)
-            .multiply(
-              new T.Quaternion().setFromEuler(
-                new T.Euler(t * 15, t * 11, t * 8),
-              ),
-            );
-        } else {
-          o.group.quaternion.slerp(
-            o.target,
-            Math.min(1, (t - 0.75) * 0.35 + 0.08),
-          );
-        }
-        if (t === 1) o.group.quaternion.copy(o.target);
+    function move(e: PointerEvent) {
+      if (!constraint) return;
+      locate(e); const hit = new T.Vector3();
+      if (ray.ray.intersectPlane(dragPlane,hit)) anchor.position.set(
+        T.MathUtils.clamp(hit.x,-table.width/2+1.1,table.width/2-1.1),1.6,
+        T.MathUtils.clamp(hit.z,-table.depth/2+1.1,table.depth/2-1.1));
+    }
+    function down(e: PointerEvent) {
+      if (!interactive || replay || e.button !== 0 || constraint) return;
+      locate(e);
+      const hits = ray.intersectObjects(groups,true);
+      if (!hits.length) return;
+      let obj = hits[0].object;
+      while (obj.parent && !groups.includes(obj as T.Group)) obj = obj.parent;
+      const index = groups.indexOf(obj as T.Group); if (index<0) return;
+      const body = table.bodies[index]; body.wakeUp(); dragged = true;
+      const p = hits[0].point, local = body.pointToLocalFrame(new C.Vec3(p.x,p.y,p.z));
+      anchor.position.set(p.x,p.y,p.z);
+      constraint = new C.PointToPointConstraint(body,local,anchor,new C.Vec3(),100);
+      table.world.addConstraint(constraint); pointerId=e.pointerId;
+      renderer.domElement.setPointerCapture(e.pointerId); el.style.cursor='grabbing'; e.preventDefault();
+    }
+    function up() {
+      if (constraint) table.world.removeConstraint(constraint);
+      constraint=null;
+      if (pointerId!==null && renderer.domElement.hasPointerCapture(pointerId)) renderer.domElement.releasePointerCapture(pointerId);
+      pointerId=null; el.style.cursor=interactive?'grab':'default';
+    }
+    renderer.domElement.style.touchAction='none';
+    renderer.domElement.addEventListener('pointerdown',down); renderer.domElement.addEventListener('pointermove',move);
+    renderer.domElement.addEventListener('pointerup',up); renderer.domElement.addEventListener('pointercancel',up);
+    renderer.domElement.addEventListener('lostpointercapture',up); window.addEventListener('blur',up);
+    let w=1,h=1;
+    const resize=()=> { w=Math.max(1,el.clientWidth);h=Math.max(1,el.clientHeight);renderer.setSize(w,h); };
+    const observer=new ResizeObserver(resize);observer.observe(el);resize();
+    let frame=0, previous=performance.now(), accumulator=0, viewExtent=8;
+    const animate=(now:number)=> {
+      accumulator += Math.min((now-previous)/1000,.1);previous=now;
+      while(accumulator>=STEP) {
+        if (replay || dragged) table.world.step(STEP);
+        if (replay && ++step >= roll!.physics!.steps) finish();
+        accumulator-=STEP;
       }
-      renderer.render(scene, camera);
-      frame = requestAnimationFrame(animate);
+      table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
+      // Double the default projection scale in the desktop tray; expand only as
+      // needed to keep a large pool fully visible rather than clipping dice.
+      const aspect=w/h;
+      let extent=Math.max(table.depth*.72,table.width/aspect)/sizeMultiplier;
+      let required=0;
+      groups.forEach(g=> { const p=g.position.clone().applyMatrix4(camera.matrixWorldInverse); required=Math.max(required,Math.abs(p.y)+1.5,(Math.abs(p.x)+1.5)/aspect); });
+      extent=Math.max(extent/2,required);
+      if (!constraint) viewExtent=extent;
+      extent=viewExtent;
+      camera.left=-extent*aspect;camera.right=extent*aspect;camera.top=extent;camera.bottom=-extent;camera.updateProjectionMatrix();
+      el.style.cursor=replay?'progress':constraint?'grabbing':interactive?'grab':'default';
+      renderer.render(scene,camera); frame=requestAnimationFrame(animate);
     };
-    frame = requestAnimationFrame(animate);
-    return () => {
-      disposed = true;
-      cancelAnimationFrame(frame);
-      ro.disconnect();
-      clear();
-      floor.geometry.dispose();
-      (floor.material as T.Material).dispose();
-      renderer.dispose();
-      el.removeChild(renderer.domElement);
-      update.current = () => {};
+    frame=requestAnimationFrame(animate);
+    return ()=> {
+      cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('blur',up);up();
+      scene.traverse(object=> {const mesh=object as T.Mesh;mesh.geometry?.dispose();
+        const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+        materials.forEach(m=> {if(m){(m as T.MeshBasicMaterial).map?.dispose();m.dispose();}}); });
+      renderer.dispose();renderer.domElement.remove();
     };
-  }, [transparent, color]);
-  useEffect(() => update.current(roll), [roll]);
-  return (
-    <div className="dice-canvas" ref={host} aria-label="Animated 3D dice">
-      {failed && (
-        <p className="render-error">
-          3D graphics are unavailable on this device. Roll results still appear
-          in the console.
-        </p>
-      )}
-    </div>
-  );
+  }, [roll,transparent,color,sizeMultiplier,interactive]);
+  return <div className="dice-canvas" ref={host} aria-label="Physics dice tray: drag settled dice to move them">
+    {failed && <p className="render-error">3D graphics unavailable. Your roll result is still shown below.</p>}
+  </div>;
 }

@@ -1,5 +1,5 @@
 import { database } from '@/db/raw';
-import { evaluate } from '@/lib/dice';
+import { evaluatePhysical } from '@/lib/dice-physics';
 const json = (data: unknown, status = 200) =>
   Response.json(data, {
     status,
@@ -145,7 +145,7 @@ export async function POST(req: Request) {
         );
       const roll = {
         id: b.id,
-        ...evaluate(b.expression),
+        ...evaluatePhysical(b.expression),
         name: player.name,
         color: player.color,
         label: name(b.label, ''),

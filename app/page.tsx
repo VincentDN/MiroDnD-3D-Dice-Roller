@@ -30,6 +30,7 @@ export default function Home() {
   const [ready, setReady] = useState(false),
     [key, setKey] = useState(''),
     [overlay, setOverlay] = useState(false),
+    [desktop, setDesktop] = useState(false),
     [cred, setCred] = useState<Credential | null>(null);
   const [name, setName] = useState(''),
     [roomName, setRoomName] = useState('The Sunday campaign'),
@@ -44,6 +45,7 @@ export default function Home() {
     [connected, setConnected] = useState(false),
     [notice, setNotice] = useState(''),
     [help, setHelp] = useState(false);
+  const activeDuration = useRef(1800);
   const queue = useRef<Roll[]>([]),
     last = useRef(0),
     seen = useRef(new Set<string>()),
@@ -59,6 +61,7 @@ export default function Home() {
       const k = p.get('room') || '';
       setKey(k);
       setOverlay(p.get('overlay') === '1');
+      setDesktop(p.get('desktop') === '1');
       try {
         const saved = JSON.parse(
           localStorage.getItem('rollparty:' + k) || 'null',
@@ -98,11 +101,13 @@ export default function Home() {
   const play = useCallback(() => {
     if (animationBusy.current || !queue.current.length) return;
     animationBusy.current = true;
-    setActive(queue.current.shift()!);
+    const next = queue.current.shift()!;
+    activeDuration.current = next.physics ? next.physics.steps / 60 * 1000 : 1800;
+    setActive(next);
     timer.current = setTimeout(() => {
       animationBusy.current = false;
       play();
-    }, 2600);
+    }, Math.max(2600, (activeDuration.current || 0) + 500));
   }, []);
   const ingest = useCallback(
     (rolls: Roll[], animate = true) => {
@@ -125,6 +130,8 @@ export default function Home() {
     if (!key) return;
     let stopped = false,
       timeout: ReturnType<typeof setTimeout>;
+    if (timer.current) clearTimeout(timer.current);
+    animationBusy.current = false;
     last.current = 0;
     seen.current.clear();
     queue.current = [];
@@ -197,10 +204,10 @@ export default function Home() {
   const roll = useCallback(
     async (raw = expression) => {
       if (!cred) throw Error('Join this room first.');
-      parseExpression(raw);
       setBusy(true);
       setError('');
       try {
+        parseExpression(raw);
         if (
           !retry.current ||
           retry.current.expression !== raw ||
@@ -355,9 +362,25 @@ export default function Home() {
     );
   if (overlay)
     return (
-      <main className="overlay-root">
+      <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         <div className="overlay-corner">
-          {active && <DiceStage roll={active} transparent />}
+          {desktop && <div className="desktop-drag-bar">Rollparty <span>Drag here to move · resize at the corner</span></div>}
+          {(active || desktop) && <DiceStage roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} />}
+          {desktop && <section className="desktop-roll-controls">
+            {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
+              <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
+              <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
+            </form> : <>
+              <div className="desktop-dice-picker">{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
+              <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
+                <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
+                <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
+              </form>
+            </>}
+            <p className="desktop-result">{active ? `${active.name}: ${active.expression} = ${active.total}` : 'Ready to roll'}</p>
+            <small>Drag settled dice to move them. Moving dice does not change the recorded roll.</small>
+            {error && <p className="error" role="alert">{error}</p>}
+          </section>}
           <div className="overlay-console">
             <div className="console-head">
               <Dices size={16} /> ROLLPARTY{' '}

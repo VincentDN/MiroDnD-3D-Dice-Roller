@@ -16,13 +16,13 @@ function roomKey(raw) {
 
 function roomURL(key, overlay = false) {
   if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid room key.');
-  return `${SITE_ORIGIN}/#${new URLSearchParams({ room: key, ...(overlay ? { overlay: '1' } : {}) })}`;
+  return `${SITE_ORIGIN}/#${new URLSearchParams({ room: key, ...(overlay ? { overlay: '1', desktop: '1' } : {}) })}`;
 }
 
 // Electron screen coordinates are device-independent pixels, including on mixed-DPI monitors.
 function lowerLeftBounds(workArea) {
-  const width = Math.floor(workArea.width / 2);
-  const height = Math.floor(workArea.height / 2);
+  const width = Math.min(520, Math.floor(workArea.width * .4));
+  const height = Math.min(440, Math.floor(workArea.height * .7));
   return { x: workArea.x, y: workArea.y + workArea.height - height, width, height };
 }
 
