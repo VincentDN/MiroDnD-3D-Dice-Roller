@@ -6,7 +6,8 @@ import { evaluate, parseExpression } from './dice.ts';
 export const STEP = 1 / 60;
 export const MAX_STEPS = 720;
 export type Pose = { p: number[]; q: number[] };
-export type PhysicsRoll = { seed: number; steps: number; poses: Pose[] };
+export type Motion = Pose & { v: number[]; w: number[] };
+export type PhysicsRoll = { seed: number; steps: number; poses: Pose[]; release?: Motion[] };
 export function physicalSides(sides: number[]) {
   return sides.flatMap(s => s === 100 ? [10, 10] : [s]);
 }
@@ -85,8 +86,29 @@ export function faceValue(body: C.Body, sides: number) {
 export function snapshot(body: C.Body): Pose {
   return { p: [body.position.x, body.position.y, body.position.z], q: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w] };
 }
-export function simulate(sides: number[], seed: number) {
+export function snapshotMotion(body: C.Body): Motion {
+  return { ...snapshot(body), v: [body.velocity.x,body.velocity.y,body.velocity.z], w: [body.angularVelocity.x,body.angularVelocity.y,body.angularVelocity.z] };
+}
+export function isDeliberateThrow(body: C.Body) {
+  return body.velocity.length() >= 2.5 || body.angularVelocity.length() >= 5;
+}
+export function replayTable(sides: number[], seed: number, release?: Motion[]) {
   const table = createTable(physicalSides(sides), seed);
+  if (release) {
+    if (!Array.isArray(release) || release.length !== table.bodies.length) throw Error('Invalid throw.');
+    table.bodies.forEach((body,i)=> {
+      const m=release[i];
+      for (const [name,count] of [['p',3],['q',4],['v',3],['w',3]] as const)
+        if (!Array.isArray(m?.[name]) || m[name].length!==count || !m[name].every(Number.isFinite)) throw Error('Invalid throw motion.');
+      if (Math.abs(m.p[0])>table.width/2+1 || Math.abs(m.p[2])>table.depth/2+1 || m.p[1]<0 || m.p[1]>10 || Math.hypot(...m.v)>40 || Math.hypot(...m.w)>80 || Math.abs(Math.hypot(...m.q)-1)>.01) throw Error('Throw is outside the table limits.');
+      body.position.set(m.p[0],m.p[1],m.p[2]);body.quaternion.set(m.q[0],m.q[1],m.q[2],m.q[3]);body.quaternion.normalize();
+      body.velocity.set(m.v[0],m.v[1],m.v[2]);body.angularVelocity.set(m.w[0],m.w[1],m.w[2]);body.wakeUp();
+    });
+  }
+  return table;
+}
+export function simulate(sides: number[], seed: number, release?: Motion[]) {
+  const table = replayTable(sides, seed, release);
   let steps = 0;
   while (steps < MAX_STEPS) {
     table.world.step(STEP); steps++;
@@ -100,7 +122,7 @@ export function simulate(sides: number[], seed: number) {
     const tens = values[index++] - 1, units = values[index++] - 1;
     return tens * 10 + units || 100;
   });
-  return { values: logical, physics: { seed, steps, poses: table.bodies.map(snapshot) } };
+  return { values: logical, physics: { seed, steps, poses: table.bodies.map(snapshot), ...(release ? { release } : {}) } };
 }
 export function evaluatePhysical(raw: string) {
   const parsed = parseExpression(raw);
@@ -114,4 +136,11 @@ export function evaluatePhysical(raw: string) {
   if (!result) throw Error('The dice did not settle. Please roll again.');
   let i = 0;
   return { ...evaluate(raw, () => result.values[i++]), physics: result.physics };
+}
+
+export function evaluateThrow(raw: string, release: Motion[]) {
+  if (!Array.isArray(release)) throw Error('A mouse throw needs release motion.');
+  const parsed=parseExpression(raw), sides=parsed.groups.flatMap(g=>Array(g.count).fill(g.sides) as number[]);
+  const result=simulate(sides,123,release);let i=0;
+  return { ...evaluate(raw,()=>result.values[i++]), physics:result.physics };
 }

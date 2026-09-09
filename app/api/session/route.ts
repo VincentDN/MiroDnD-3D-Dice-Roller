@@ -1,5 +1,5 @@
 import { database } from '@/db/raw';
-import { evaluatePhysical } from '@/lib/dice-physics';
+import { evaluatePhysical, evaluateThrow } from '@/lib/dice-physics';
 const json = (data: unknown, status = 200) =>
   Response.json(data, {
     status,
@@ -65,10 +65,10 @@ export async function GET(req: Request) {
 }
 export async function POST(req: Request) {
   try {
-    if (Number(req.headers.get('content-length')) > 4096)
+    if (Number(req.headers.get('content-length')) > 65536)
       return json({ error: 'Request too large' }, 413);
     const raw = await req.text();
-    if (raw.length > 4096) return json({ error: 'Request too large' }, 413);
+    if (raw.length > 65536) return json({ error: 'Request too large' }, 413);
     const b = JSON.parse(raw),
       db = database(),
       now = Date.now();
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
         .run();
       return json({ ok: true });
     }
-    if (b.action === 'roll') {
+    if (b.action === 'roll' || b.action === 'throw') {
       if (typeof b.id !== 'string' || !/^[0-9a-f-]{36}$/.test(b.id))
         throw Error('Invalid roll request.');
       const existing = await db
@@ -143,9 +143,16 @@ export async function POST(req: Request) {
           { error: 'Give the dice a moment before rolling again.' },
           429,
         );
+      let outcome;
+      if (b.action === 'throw') {
+        if (typeof b.parent !== 'string' || !/^[0-9a-f-]{36}$/.test(b.parent)) throw Error('Choose an existing roll to throw again.');
+        const source=await db.prepare('SELECT data FROM rolls WHERE id=? AND room=?').bind(b.parent,room.id).first<{data:string}>();
+        if (!source) throw Error('This roll is no longer available.');
+        outcome={ ...evaluateThrow(JSON.parse(source.data).expression,b.release), parent:b.parent };
+      } else outcome=evaluatePhysical(b.expression);
       const roll = {
         id: b.id,
-        ...evaluatePhysical(b.expression),
+        ...outcome,
         name: player.name,
         color: player.color,
         label: name(b.label, ''),

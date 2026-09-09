@@ -1,7 +1,7 @@
 {
   "name": "rollparty-desktop",
   "productName": "Rollparty Desktop",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Transparent, interactive D&D dice over Miro and other desktop apps",
   "author": "Vincent De Nil",
   "license": "MIT",
