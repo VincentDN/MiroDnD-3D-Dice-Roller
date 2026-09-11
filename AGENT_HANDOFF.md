@@ -179,6 +179,49 @@ Pages project under their own dev domain, independent of that platform.
 
 _Update this section on every handoff. Newest entry at the top._
 
+- **2026-09-11 (Claude, follow-up session):** The original three workstreams
+  below are done and merged into this branch's history. This session did
+  additional feature/bugfix work requested after that, also on this same
+  branch:
+  - **Icon-based dice color**: replaced the raw dice-color swatch picker
+    with an icon picker (`lib/avatars.ts`, `components/avatar.tsx`) - the
+    dice color is now derived from the chosen icon everywhere, including
+    server-side (`app/api/session/route.ts` derives color from `avatar` and
+    ignores a mismatched client-sent color). Only 3 icons exist right now
+    (Arcane Scion / Ringmaster / Warborn) and render as themed icon-badge
+    fallbacks since no portrait art files exist yet - drop real PNGs at the
+    exact paths named in `public/avatars/README.md` to upgrade them, no
+    code changes needed. Added a nullable `avatar` column
+    (`drizzle/0001_blue_zzzax.sql`).
+  - **Fixed a dice-physics bug**: the animation could restart mid-roll
+    (dice reset to mid-air and re-rolled) because `components/dice-stage.tsx`'s
+    effect was keyed on the whole `roll` object rather than `roll?.id`, so
+    any same-id-but-different-reference roll object retriggered a full
+    replay. Also fixed `last.current` (poll cursor) only being updated
+    inside `poll()`, which caused an every-roll redundant re-fetch of the
+    roll just submitted. See the commit for the full reasoning chain and
+    how it was investigated (could not get a hard deterministic repro
+    locally, but the object-identity-churn fix is correct regardless of
+    the exact trigger, per React's own guidance on effect dependencies).
+  - **Physics performance**: `sleepTimeLimit` on dice bodies (`lib/dice-physics.ts`)
+    was 0.4s (24 frames of dead time after a die visibly stops, on every
+    single die, every roll) - cut to 0.15s. Measured directly: worst case
+    (40d20) dropped from ~433ms/610 steps to ~234ms/210 steps of server
+    compute, small rolls unaffected (already ~30ms). If dice ever start
+    looking less "settled" before the result locks in, this is the knob to
+    revisit.
+  - **Overlay mode is now 3 resizable panels**: dice table / console /
+    saved-rolls-as-a-bottom-taskbar, replacing the old single fixed corner
+    block. See `components/resizable-panel.tsx` (`ResizablePanel` for the
+    two floating panels via native CSS `resize`, `ResizableTaskbar` for the
+    bottom bar via a custom drag grip since native resize can't grow from a
+    top edge). Position is fixed per panel; only sizing is interactive -
+    free dragging/repositioning was not requested and isn't implemented.
+  - All verified: `node --test` 20/20 (root) + 7/7 (desktop), `tsc --noEmit`
+    clean, `pnpm run build` clean, live Playwright checks (screenshots,
+    console-error capture) for the icon picker, both overlay variants, and
+    repeated/rapid rolling.
+
 - **2026-09-11 (Claude):** All three workstreams implemented and pushed to
   this branch. Summary of what landed (see commit log for exact diffs):
   - **Workstream 1 (settings)**: `lib/settings.ts` (persisted
