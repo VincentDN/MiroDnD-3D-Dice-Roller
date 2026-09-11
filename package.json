@@ -11,7 +11,10 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "cf:d1:create": "wrangler d1 create vincentsviberoller",
+    "cf:d1:migrate": "wrangler d1 execute vincentsviberoller --remote --file=drizzle/0000_slow_thunderball.sql",
+    "deploy": "vinext build && wrangler deploy"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

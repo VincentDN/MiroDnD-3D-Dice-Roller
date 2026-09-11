@@ -1,0 +1,32 @@
+# Deploys the built app (run `pnpm run build` first) as a Cloudflare Worker
+# with static assets - Cloudflare's current recommended platform for a
+# full-stack app like this one (a static frontend plus /api/session, backed
+# by D1), rather than the legacy Pages product. See
+# docs/cloudflare-deploy.md for the full walkthrough, including why this
+# uses `wrangler deploy` and not `wrangler pages deploy`.
+#
+# This file is independent of `.openai/hosting.json`, which only configures
+# OpenAI's own "Sites" hosting control plane (used by `pnpm dev`/`pnpm start`
+# locally) - it has no effect on this deploy path.
+
+name = "vincentsviberoller"
+main = "dist/server/index.js"
+compatibility_date = "2026-05-15"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "dist/client"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vincentsviberoller"
+# Placeholder - replace with the id `pnpm run cf:d1:create` prints, or this
+# deploy will fail (or point at nothing) once running for real.
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# Optional: attach your own domain instead of the workers.dev subdomain
+# Wrangler prints after the first deploy. Uncomment once the domain is added
+# to your Cloudflare account (see docs/cloudflare-deploy.md).
+# [[routes]]
+# pattern = "dice.example.com"
+# custom_domain = true

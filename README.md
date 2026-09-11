@@ -54,4 +54,6 @@ If your Wrangler resolves relative paths against its configuration directory, us
 
 Stack: React, Vinext, Three.js, Cloudflare Workers and D1. The logical Sites binding is in `.openai/hosting.json`; schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
 
+To deploy this to your own Cloudflare account and a custom domain instead of the OpenAI-hosted site above, see [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md).
+
 The optional WebMCP `roll_dice` tool is registered only after joining a room, feature-detected, and uses the same validated action as the UI.
