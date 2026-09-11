@@ -23,6 +23,7 @@ import {
 import DiceStage from '@/components/dice-stage';
 import RollNotebook from '@/components/roll-notebook';
 import SettingsPanel, { useSettings } from '@/components/settings-panel';
+import { ResizablePanel, ResizableTaskbar } from '@/components/resizable-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion } from '@/lib/dice-physics';
 import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
@@ -74,6 +75,7 @@ export default function Home() {
   const [sound, setSound] = useState(true);
   const [fresh, setFresh] = useState(false);
   const [settledId, setSettledId] = useState('');
+  const [taskbarHeight, setTaskbarHeight] = useState(110);
   useEffect(()=> {
     const sync=()=> { let value=true;try {value=localStorage.getItem('rollparty:sound')!=='off';}catch {} setSound(value);setSoundEnabled(value); };
     sync();unlockSound();
@@ -369,11 +371,8 @@ export default function Home() {
       return e + (delta > 0 ? '+1' : '-1');
     });
   }
-  const consoleList = (compact = false) => (
-    <div
-      className={compact ? 'roll-log compact' : 'roll-log'}
-      aria-live="polite"
-    >
+  const consoleList = () => (
+    <div className="roll-log" aria-live="polite">
       {history.length === 0 ? (
         <div className="empty-log">
           <Dices size={25} />
@@ -383,7 +382,7 @@ export default function Home() {
       ) : (
         [...history]
           .reverse()
-          .slice(0, compact ? 3 : 100)
+          .slice(0, 100)
           .map((r) => (
             <article key={r.id} className="roll-entry">
               <div className="roll-sentence">
@@ -399,6 +398,26 @@ export default function Home() {
       )}
     </div>
   );
+  const rollTaskbar = () => (
+    <div className="taskbar-rolls" aria-live="polite">
+      {history.length === 0 ? (
+        <div className="taskbar-empty">
+          <Dices size={18} /> No rolls yet.
+        </div>
+      ) : (
+        [...history]
+          .reverse()
+          .map((r) => (
+            <article key={r.id} className="taskbar-roll">
+              <span className="taskbar-roll-name" style={{ color: r.color }}>{r.name}</span>
+              <span className="taskbar-roll-expr">{r.expression}</span>
+              <b className="taskbar-roll-total">{r.total}</b>
+              <time>{new Date(r.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+            </article>
+          ))
+      )}
+    </div>
+  );
   if (!ready)
     return (
       <main className="app">
@@ -408,51 +427,70 @@ export default function Home() {
   if (overlay)
     return (
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
-        <div className="overlay-corner">
-          {settingsPanel}
-          {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
+        {settingsPanel}
+        {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
+        {desktop && <section className="desktop-roll-controls">
+          {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
+            <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
+            <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
+          </form> : <>
+            <div className="desktop-dice-picker">{soundButton}{settingsButton}{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
+            <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
+              <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
+              <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
+            </form>
+          </>}
+          {cred && <div className="desktop-presets">
+            <form onSubmit={e=>{e.preventDefault();savePreset();}}>
+              <input aria-label="Name for saved dice combination" placeholder="Save this combination as…" value={presetName} maxLength={32} onChange={e=>setPresetName(e.target.value)}/>
+              <Button type="submit" size="sm" variant="outline" title="Save on this device" aria-label="Save current dice combination"><BookmarkPlus size={18}/></Button>
+            </form>
+            {presets.length>0&&<div className="preset-list">{presets.map(p=><span className="preset" key={p.id}>
+              <button disabled={busy||!connected} title={`${p.expression} · roll ${p.name}`} onClick={()=>{setExpression(p.expression);roll(p.expression,p.name).catch(()=>{});}}>{p.name}<small>{p.expression}</small></button>
+              <button className="remove-preset" aria-label={`Remove ${p.name}`} onClick={()=>persistPresets(presets.filter(item=>item.id!==p.id))}><X size={12}/></button>
+            </span>)}</div>}
+          </div>}
+          <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
+          <small>Drag to move. Throw firmly to record a new roll.</small>
+        </section>}
+        <ResizablePanel
+          storageKey="rollparty:panel-dice"
+          className="overlay-panel dice-panel"
+          defaultWidth={desktop ? 360 : 320} defaultHeight={desktop ? 300 : 260}
+          minWidth={220} minHeight={200}
+          style={{ top: desktop ? 140 : 16, maxHeight: `calc(100vh - ${taskbarHeight + (desktop ? 156 : 32)}px)` }}
+        >
           {(active || desktop) && <DiceStage pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
-          {desktop && <section className="desktop-roll-controls">
-            {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
-              <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
-              <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
-            </form> : <>
-              <div className="desktop-dice-picker">{soundButton}{settingsButton}{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
-              <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
-                <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
-                <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
-              </form>
-            </>}
-            {cred && <div className="desktop-presets">
-              <form onSubmit={e=>{e.preventDefault();savePreset();}}>
-                <input aria-label="Name for saved dice combination" placeholder="Save this combination as…" value={presetName} maxLength={32} onChange={e=>setPresetName(e.target.value)}/>
-                <Button type="submit" size="sm" variant="outline" title="Save on this device" aria-label="Save current dice combination"><BookmarkPlus size={18}/></Button>
-              </form>
-              {presets.length>0&&<div className="preset-list">{presets.map(p=><span className="preset" key={p.id}>
-                <button disabled={busy||!connected} title={`${p.expression} · roll ${p.name}`} onClick={()=>{setExpression(p.expression);roll(p.expression,p.name).catch(()=>{});}}>{p.name}<small>{p.expression}</small></button>
-                <button className="remove-preset" aria-label={`Remove ${p.name}`} onClick={()=>persistPresets(presets.filter(item=>item.id!==p.id))}><X size={12}/></button>
-              </span>)}</div>}
-            </div>}
-            <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
-            <small>Drag to move. Throw firmly to record a new roll.</small>
-            {error && <p className="error" role="alert">{error}</p>}
-          </section>}
-          <div className="overlay-console">
-            <div className="console-head">
-              <Dices size={16} /> VincentsVibeRoller{' '}
-              <span className={connected ? 'live' : 'offline'}>
-                {connected ? 'LIVE' : 'CONNECTING'}
-              </span>
-            </div>
-            {error && (
-              <p role="alert" className="error">
-                {error}
-              </p>
-            )}
-            {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
-            {consoleList(true)}
+        </ResizablePanel>
+        <ResizablePanel
+          storageKey="rollparty:panel-console"
+          className="overlay-panel console-panel"
+          defaultWidth={260} defaultHeight={150}
+          minWidth={180} minHeight={90}
+          style={{ top: desktop ? 140 : 16, maxHeight: `calc(100vh - ${taskbarHeight + (desktop ? 156 : 32)}px)` }}
+        >
+          <div className="console-head">
+            <Dices size={16} /> VincentsVibeRoller{' '}
+            <span className={connected ? 'live' : 'offline'}>
+              {connected ? 'LIVE' : 'CONNECTING'}
+            </span>
           </div>
-        </div>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
+        </ResizablePanel>
+        <ResizableTaskbar
+          storageKey="rollparty:panel-rolls-height"
+          defaultHeight={110}
+          minHeight={64}
+          className="overlay-taskbar"
+          onHeightChange={setTaskbarHeight}
+        >
+          {rollTaskbar()}
+        </ResizableTaskbar>
       </main>
     );
   return (
