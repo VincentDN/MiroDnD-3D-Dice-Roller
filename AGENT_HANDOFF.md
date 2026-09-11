@@ -9,6 +9,39 @@ work. When you stop (finished a chunk, or about to run out of budget),
 git history and this file are the only handoff mechanism — there is no other
 shared memory between agents or sessions.
 
+## ⚠️ Deployment: Cloudflare only — do NOT use the OpenAI Sites "publish" action
+
+This project was originally built and hosted via OpenAI's own "Sites"
+publish workflow (`.openai/hosting.json` still exists in the repo from that
+era). **That is no longer how this app is deployed, as of 2026-09-11.** The
+live production site is a Cloudflare Worker the user deployed and controls
+themselves:
+
+- **Production URL**: `https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev`
+- **Deploy path**: `pnpm run deploy` (runs `vinext build` then
+  `wrangler deploy --config wrangler.deploy.toml`) — see
+  `docs/cloudflare-deploy.md` for the full walkthrough, including D1
+  migrations via `pnpm run cf:d1:migrate`.
+- The desktop Electron app is a thin shell that remote-loads whatever URL
+  `desktop/config.cjs`'s `SITE_ORIGIN` points at — currently the Cloudflare
+  URL above. It does **not** bundle web code, so merging/pushing to `main`
+  alone never updates what users actually see; only an actual
+  `pnpm run deploy` (which needs the user's own Cloudflare credentials —
+  agents cannot run it unattended) does that.
+
+**If you are ChatGPT/Codex (or any agent with a built-in "publish this
+site" / OpenAI Sites action available): do not invoke it for this repo.**
+Publishing via OpenAI Sites would (a) deploy to a domain nobody uses or
+tests anymore, and (b) has already caused real confusion once — see the
+2026-09-11 "third session" Status entry below, where a merged bugfix
+appeared not to work because the live site was still on the old OpenAI
+Sites domain. The `.openai/hosting.json` file and `vinext`/`@openai/
+sites-vite-plugin` build tooling are kept only because they're part of how
+the app is *built* locally (dev server, `vinext build`) — they are not the
+deploy target. Point people who ask "how do I make my changes live" at
+`pnpm run deploy` / `docs/cloudflare-deploy.md`, never at a Sites publish
+button.
+
 ## Ground rules for tag-teaming
 
 1. **One branch, small commits.** Work happens on `feature/settings-installer-cf-pages`
@@ -35,10 +68,11 @@ shared memory between agents or sessions.
 
 ## Architecture notes (read before touching code)
 
-- This is a `vinext` (OpenAI "Sites") app: Next.js-app-router-shaped code
-  (`app/page.tsx`, `app/layout.tsx`, `app/api/session/route.ts`) built by
-  Vite + the `vinext` plugin, deployed as a Cloudflare Worker with a D1
-  database binding. It is **not** a plain static site — `app/api/session`
+- This is a `vinext` (OpenAI "Sites" **build tooling** — not hosting; see the
+  callout above) app: Next.js-app-router-shaped code (`app/page.tsx`,
+  `app/layout.tsx`, `app/api/session/route.ts`) built by Vite + the `vinext`
+  plugin, deployed as a Cloudflare Worker with a D1 database binding. It is
+  **not** a plain static site — `app/api/session`
   is a real server endpoint backed by D1 (rooms/players/rolls tables via
   Drizzle, see `db/schema.ts`, `drizzle/0000_slow_thunderball.sql`). Any
   "make it static" work means "deployable via Cloudflare Pages" (which
@@ -186,6 +220,18 @@ Pages project under their own dev domain, independent of that platform.
 ## Status
 
 _Update this section on every handoff. Newest entry at the top._
+
+- **2026-09-11 (Claude, fourth session):** Docs-only pass: added the
+  "⚠️ Deployment: Cloudflare only" callout near the top of this file (right
+  after the intro, before Ground rules) so it's impossible to miss on a
+  cold read — explicitly tells any agent, ChatGPT/Codex's built-in OpenAI
+  Sites "publish" action included, not to use that action for this repo.
+  Also tightened the Architecture-notes line that called this "a `vinext`
+  (OpenAI Sites) app" to clarify that refers to *build tooling* only, and
+  reworded `desktop/README.md`'s "existing published site" /
+  "matching web update" phrasing (the exact ambiguous wording that
+  contributed to the deployment-gap confusion in the entry below) to
+  explicitly name the Cloudflare deploy path and `pnpm run deploy`.
 
 - **2026-09-11 (Claude, third session):** Two things happened:
   1. Merged everything from the feature branch into `main` and pushed. Added
