@@ -27,6 +27,9 @@ database_name = "vincentsviberoller"
 # Placeholder - replace with the id `pnpm run cf:d1:create` prints, or this
 # deploy will fail (or point at nothing) once running for real.
 database_id = "00000000-0000-0000-0000-000000000000"
+# Points `wrangler d1 migrations apply` (run via `pnpm run cf:d1:migrate`) at
+# drizzle-kit's output folder instead of the wrangler default ("migrations").
+migrations_dir = "drizzle"
 
 # Optional: attach your own domain instead of the workers.dev subdomain
 # Wrangler prints after the first deploy. Uncomment once the domain is added

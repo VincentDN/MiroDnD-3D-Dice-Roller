@@ -14,6 +14,7 @@ export const players = sqliteTable(
     secret: text('secret').notNull(),
     name: text('name').notNull(),
     color: text('color').notNull(),
+    avatar: text('avatar'),
     seen: integer('seen').notNull(),
   },
   (t) => [index('players_room').on(t.room)],

@@ -18,6 +18,10 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, interactive window initially in the **lower left** of your selected monitor. Drag its header to move it, or use its corner grip to resize it. Roll directly in the overlay. Dice use a fixed orthographic projection; their apparent size does not change while moving. The desktop tray has a purple backdrop, collision sounds, a result ping and a brass fanfare for a kept natural 20. Save named combinations directly in the overlay; presets and mute preference persist on this device. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop while receiving mouse input inside its own window. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
 
+## Icons and dice color
+
+Instead of picking a raw color, each player picks an icon (Arcane Scion, Ringmaster, Warborn) and their dice color follows from that automatically - the server derives the color from the chosen icon, so it can't drift out of sync. Portrait art lives in `public/avatars/` (`arcane-scion.png`, `ringmaster.png`, `warborn.png`, defined in `lib/avatars.ts`); until those files are added, each icon shows as a colored badge with a themed glyph instead - dropping in the real files at those exact paths upgrades the look with no code changes. Add a fourth icon by adding one entry to `AVATARS` in `lib/avatars.ts` plus its image file.
+
 ## Personal roll notebook
 
 Open **My roll notes** in the console to comment on your own rolls and choose **Save Markdown** to export them. The latest 1,000 rolls are stored on this device for each room and player. Comments remain after reload; export a file to keep a lasting session record.
@@ -39,13 +43,13 @@ Player credentials are distinct random tokens stored only in the browser and has
 ## Development
 
 Requires Node 24+ and pnpm. Install with `pnpm install`, then run `pnpm dev`.
-For the first local run, generate the build once with `pnpm build`, then apply the migration to the preview's database:
+For the first local run, generate the build once with `pnpm build`, then apply every migration in `drizzle/`, in order, to the preview's database:
 
 ```sh
-pnpm exec wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_slow_thunderball.sql
+for f in drizzle/*.sql; do pnpm exec wrangler d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file "$f"; done
 ```
 
-If your Wrangler resolves relative paths against its configuration directory, use an absolute project path for `--persist-to`.
+If your Wrangler resolves relative paths against its configuration directory, use an absolute project path for `--persist-to`. Adding a schema change later (`db/schema.ts` + `pnpm run db:generate`) adds a new numbered file to `drizzle/`; re-run the loop above (or just the new file) to apply it locally.
 
 - `pnpm build`: Cloudflare Worker and browser assets.
 - `pnpm exec tsc --noEmit`: type validation.

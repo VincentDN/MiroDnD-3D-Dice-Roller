@@ -44,9 +44,12 @@ Apply the schema to that new (empty) database:
 pnpm run cf:d1:migrate
 ```
 
-That runs `drizzle/0000_slow_thunderball.sql` (the rooms/players/rolls
-tables) against your real D1 database with `--remote`. If you add more
-migrations later (`pnpm run db:generate`), apply each new file the same way.
+That's `wrangler d1 migrations apply`, which tracks what's already applied in
+a `d1_migrations` bookkeeping table it creates on your database, so it's
+safe to re-run any time - it only applies whatever's new in `drizzle/`
+(currently the rooms/players/rolls tables, plus the `avatar` column added
+since). After a schema change (`db/schema.ts` + `pnpm run db:generate`),
+just re-run `pnpm run cf:d1:migrate`.
 
 ## Build and deploy
 

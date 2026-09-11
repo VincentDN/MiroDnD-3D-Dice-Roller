@@ -13,7 +13,7 @@
     "format": "oxfmt",
     "db:generate": "drizzle-kit generate",
     "cf:d1:create": "wrangler d1 create vincentsviberoller",
-    "cf:d1:migrate": "wrangler d1 execute vincentsviberoller --remote --file=drizzle/0000_slow_thunderball.sql",
+    "cf:d1:migrate": "wrangler d1 migrations apply vincentsviberoller --config wrangler.deploy.toml --remote",
     "deploy": "vinext build && wrangler deploy --config wrangler.deploy.toml"
   },
   "dependencies": {

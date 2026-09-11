@@ -11,7 +11,6 @@ import {
   RotateCcw,
   Plus,
   Minus,
-  Check,
   Users,
   Move,
   Maximize2,
@@ -28,16 +27,10 @@ import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion } from '@/lib/dice-physics';
 import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
-type Player = { id: string; name: string; color: string; seen: number };
+import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
+import { AvatarImage, AvatarPicker } from '@/components/avatar';
+type Player = { id: string; name: string; color: string; avatar: string | null; seen: number };
 type Credential = { id: string; secret: string };
-const colors = [
-  '#32a6c8',
-  '#ab79ef',
-  '#ef8267',
-  '#d355ef',
-  '#f3bd5b',
-  '#ed82b5',
-];
 export default function Home() {
   const [ready, setReady] = useState(false),
     [key, setKey] = useState(''),
@@ -46,10 +39,11 @@ export default function Home() {
     [cred, setCred] = useState<Credential | null>(null);
   const [name, setName] = useState(''),
     [roomName, setRoomName] = useState('The Sunday campaign'),
-    [color, setColor] = useState(colors[0]),
+    [avatar, setAvatar] = useState(DEFAULT_AVATAR_ID),
     [players, setPlayers] = useState<Player[]>([]),
     [history, setHistory] = useState<Roll[]>([]),
     [active, setActive] = useState<Roll | null>(null);
+  const color = avatarById(avatar)?.color ?? AVATARS[0].color;
   const [expression, setExpression] = useState('1d20'),
     [label, setLabel] = useState(''),
     [busy, setBusy] = useState(false),
@@ -119,7 +113,8 @@ export default function Home() {
         );
         setCred(saved);
         setName(localStorage.getItem('rollparty:name') || '');
-        setColor(localStorage.getItem('rollparty:color') || colors[0]);
+        const savedAvatar = localStorage.getItem('rollparty:avatar');
+        setAvatar(isAvatarId(savedAvatar) ? savedAvatar : DEFAULT_AVATAR_ID);
       } catch {
         setCred(null);
       }
@@ -235,13 +230,13 @@ export default function Home() {
   );
   async function join(roomKey = key) {
     const data = await api(
-      { action: 'join', name: name.trim() || 'Adventurer', color },
+      { action: 'join', name: name.trim() || 'Adventurer', avatar },
       roomKey,
       null,
     );
     localStorage.setItem('rollparty:' + roomKey, JSON.stringify(data));
     localStorage.setItem('rollparty:name', name);
-    localStorage.setItem('rollparty:color', color);
+    localStorage.setItem('rollparty:avatar', avatar);
     setCred(data);
   }
   async function enter(create: boolean) {
@@ -332,9 +327,9 @@ export default function Home() {
     setBusy(true);
     setError('');
     try {
-      await api({ action: 'profile', name, color });
+      await api({ action: 'profile', name, avatar });
       localStorage.setItem('rollparty:name', name);
-      localStorage.setItem('rollparty:color', color);
+      localStorage.setItem('rollparty:avatar', avatar);
       setNotice('Your dice style is saved.');
     } catch (e) {
       setError((e as Error).message);
@@ -542,22 +537,8 @@ export default function Home() {
                     />
                   </label>
                 )}
-                <label>Pick your dice color</label>
-                <div className="swatches">
-                  {colors.map((c) => (
-                    <button
-                      type="button"
-                      key={c}
-                      className={c === color ? 'selected' : ''}
-                      style={{ background: c }}
-                      aria-label={'Dice color ' + c}
-                      aria-pressed={c === color}
-                      onClick={() => setColor(c)}
-                    >
-                      {c === color && <Check size={18} />}
-                    </button>
-                  ))}
-                </div>
+                <label>Pick your icon</label>
+                <AvatarPicker value={avatar} onChange={setAvatar} />
                 <Button type="submit" disabled={busy} className="primary">
                   {busy ? 'Opening room…' : key ? 'Join room' : 'Create a room'}{' '}
                   <ArrowUpRight />
@@ -773,18 +754,25 @@ export default function Home() {
                     <span>{players.length} players</span>
                   </div>
                   <div className="player-list">
-                    {players.map((p) => (
-                      <div key={p.id} className="player">
-                        <span style={{ background: p.color }}>
-                          {p.name.slice(0, 1).toUpperCase()}
-                        </span>
-                        <div>
-                          {p.name}
-                          {p.id === cred.id && <small>you</small>}
+                    {players.map((p) => {
+                      const pAvatar = avatarById(p.avatar);
+                      return (
+                        <div key={p.id} className="player">
+                          {pAvatar ? (
+                            <AvatarImage avatar={pAvatar} size={32} />
+                          ) : (
+                            <span style={{ background: p.color }}>
+                              {p.name.slice(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                          <div>
+                            {p.name}
+                            {p.id === cred.id && <small>you</small>}
+                          </div>
+                          <Dices size={18} color={p.color} />
                         </div>
-                        <Dices size={18} color={p.color} />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <details>
                     <summary>Your dice & profile</summary>
@@ -796,14 +784,8 @@ export default function Home() {
                         maxLength={40}
                       />
                     </label>
-                    <label className="color-label">
-                      Dice color
-                      <input
-                        type="color"
-                        value={color}
-                        onChange={(e) => setColor(e.target.value)}
-                      />
-                    </label>
+                    <label>Your icon</label>
+                    <AvatarPicker value={avatar} onChange={setAvatar} />
                     <Button
                       className="outline"
                       disabled={busy}

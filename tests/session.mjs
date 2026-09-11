@@ -65,6 +65,29 @@ assert.equal(
 );
 const updated = await call(null, key);
 assert.equal(updated.data.players.find((p) => p.id === b.id).color, '#2244aa');
+// A chosen avatar (lib/avatars.ts) always wins over any raw color sent alongside it.
+const c = (
+  await call(
+    { action: 'join', name: 'Test warlord', avatar: 'warborn', color: '#ffffff' },
+    key,
+  )
+).data;
+const afterJoin = await call(null, key);
+const warlord = afterJoin.data.players.find((p) => p.id === c.id);
+assert.equal(warlord.avatar, 'warborn');
+assert.equal(warlord.color, '#e8ac3a');
+assert.equal(
+  (
+    await call(
+      { action: 'profile', name: 'Test warlord', avatar: 'ringmaster' },
+      key,
+      c.secret,
+    )
+  ).status,
+  200,
+);
+const afterProfile = await call(null, key);
+assert.equal(afterProfile.data.players.find((p) => p.id === c.id).avatar, 'ringmaster');
 console.log(
-  'PASS: room creation, two-player shared results, duplicate protection, access isolation, profile persistence',
+  'PASS: room creation, two-player shared results, duplicate protection, access isolation, profile persistence, avatar-derived color',
 );
