@@ -10,7 +10,7 @@ Transparent, always-on-top physics dice in a compact, interactive window startin
 4. Create or join the room in the roller window. The desktop overlay follows that room automatically.
 5. Roll directly using the floating window’s dice buttons and notation box. Drag settled dice with your mouse. New rolls from everyone in the room appear in the same window.
 
-Use **Monitor with Miro** if you have multiple screens. Only dice are shown by default; enable **Show recent roll results** to include the compact history. The window starts at up to 680 × 760 logical pixels and can be moved and resized. The dice tray has a purple backdrop and fixed camera framing: dragging no longer changes apparent scale. Closing the roller returns you to desktop controls. Closing the controls keeps the app in the Windows notification area; use **Quit** to exit.
+Use **Monitor with Miro** if you have multiple screens. Recent roll results are shown by default; disable **Show recent roll results** to hide the compact history. The window starts at up to 680 × 760 logical pixels and can be moved and resized. The dice tray has a purple backdrop and fixed camera framing: dragging no longer changes apparent scale. Closing the roller returns you to desktop controls. Closing the controls keeps the app in the Windows notification area; use **Quit** to exit.
 
 Shortcuts (while VincentsVibeRoller is running):
 
@@ -49,9 +49,9 @@ npm start
 npm run package:win
 ```
 
-The desktop package is independent of the web app's pnpm workspace. Packaging creates `release/VincentsVibeRoller-win32-x64/`; distribute the whole folder as a ZIP. The host loads the existing published site and applies `overlay.css` to its OBS view inside the native interactive window. Version 0.4 requires the matching audio, presets and throw-recording web update to be published.
+The desktop package is independent of the web app's pnpm workspace. Packaging creates `release/VincentsVibeRoller-win32-x64/`; distribute the whole folder as a ZIP. The host loads the existing published site and applies `overlay.css` to its OBS view inside the native interactive window. Version 0.5.1 requires the matching web update for softer audio, larger dice, single-pass roll animations and Markdown notes.
 
-Remote pages use a sandbox with Node integration disabled and no preload bridge. Only the packaged local control panel receives the narrow, sender-validated IPC bridge. Navigation is restricted to the VincentsVibeRoller origin; popups, downloads and permission requests are denied. Closing or hiding the controls does not stop shared-room polling.
+Remote pages use a sandbox with Node integration disabled. The overlay receives a restricted resize bridge; the room window has no preload bridge. The packaged local control panel receives a narrow, sender-validated controls bridge. Navigation is restricted to the VincentsVibeRoller origin; popups and permission requests are denied. Downloads are limited to generated Markdown roll notebooks. Closing or hiding the controls does not stop shared-room polling.
 
 ## Windows acceptance check
 

@@ -220,6 +220,11 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     frame=requestAnimationFrame(animate);
     return ()=> {
       cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('blur',up);up();
+      renderer.domElement.removeEventListener('pointerdown',down);
+      renderer.domElement.removeEventListener('pointermove',move);
+      renderer.domElement.removeEventListener('pointerup',up);
+      renderer.domElement.removeEventListener('pointercancel',up);
+      renderer.domElement.removeEventListener('lostpointercapture',up);
       scene.traverse(object=> {const mesh=object as T.Mesh;mesh.geometry?.dispose();
         const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
         materials.forEach(m=> {if(m){(m as T.MeshBasicMaterial).map?.dispose();m.dispose();}}); });

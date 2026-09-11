@@ -32,12 +32,15 @@ const read = await call(null, key, b.secret);
 assert.equal(read.data.players.length, 2);
 assert.equal(read.data.rolls[0].id, id);
 assert.equal(read.data.rolls[0].total, roll.data.total);
+assert.equal(roll.data.playerId, a.id);
+assert.equal(read.data.rolls[0].playerId, a.id);
 const duplicate = await call(
   { action: 'roll', id, expression: '2d20kh1+5' },
   key,
   a.secret,
 );
 assert.equal(duplicate.data.total, roll.data.total);
+assert.equal(duplicate.data.playerId, a.id);
 assert.equal((await call(null, key)).data.rolls.length, 1);
 assert.equal(
   (
