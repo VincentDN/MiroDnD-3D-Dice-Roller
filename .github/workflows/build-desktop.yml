@@ -1,0 +1,53 @@
+name: Build Windows Installer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/build-desktop.yml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build NSIS installer
+        run: npm run package:installer
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          tag="desktop-v${{ steps.version.outputs.version }}"
+          exe=$(ls release/*.exe)
+          gh release create "$tag" "$exe" \
+            --repo "${{ github.repository }}" \
+            --title "VincentsVibeRoller Desktop v${{ steps.version.outputs.version }}" \
+            --notes "Automated Windows installer build from commit ${{ github.sha }}. Unsigned - Windows SmartScreen may warn on first run (More info -> Run anyway)." \
+            || gh release upload "$tag" "$exe" --clobber --repo "${{ github.repository }}"
