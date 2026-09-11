@@ -167,6 +167,10 @@ export default function Home() {
         seen.current.add(r.id);
         if (animate) queue.current.push(r);
       }
+      // A direct roll()/throwDice() response ingests here too, immediately advancing
+      // the poll cursor - otherwise the next scheduled poll re-fetches this same roll
+      // (harmless since `seen` still dedupes it, but a wasted round trip every roll).
+      if (rolls.length) last.current = Math.max(last.current, ...rolls.map((r) => r.seq || 0));
       if (fresh.length)
         setHistory((h) =>
           [...h, ...fresh]
@@ -202,10 +206,6 @@ export default function Home() {
         if (initial.current && !overlay && data.rolls.length)
           setActive(data.rolls[data.rolls.length - 1]);
         initial.current = false;
-        last.current = Math.max(
-          last.current,
-          ...data.rolls.map((r: Roll) => r.seq || 0),
-        );
         setConnected(true);
         setError((e) => (e.startsWith('Connection lost') ? '' : e));
       } catch (e) {

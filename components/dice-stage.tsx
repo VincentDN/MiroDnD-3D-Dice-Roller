@@ -230,7 +230,11 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         materials.forEach(m=> {if(m){(m as T.MeshBasicMaterial).map?.dispose();m.dispose();}}); });
       renderer.domElement.remove();
     };
-  }, [roll,transparent,color,sizeMultiplier,interactive,fresh]);
+  // Keyed on roll?.id, not the roll object itself: a roll record never changes once
+  // created, so a differently-referenced-but-same-id roll (e.g. re-fetched by a poll
+  // that raced a direct roll response) must not tear down and restart the animation
+  // already playing it - that looked like the dice resetting mid-air and re-rolling.
+  }, [roll?.id,transparent,color,sizeMultiplier,interactive,fresh]);
   return <div className="dice-canvas" ref={host} aria-busy={Boolean(pendingExpression)} aria-label="Physics dice tray: drag to move, throw firmly to record a new roll">
     {pendingExpression && <span className="roll-waiting" role="status">Rolling…</span>}
     {failed && <p className="render-error">3D graphics unavailable. Your roll result is still shown below.</p>}

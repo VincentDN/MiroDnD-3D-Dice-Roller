@@ -64,7 +64,11 @@ export function createTable(sides: number[], seed: number, diceScale = 1) {
     const data = hull(s);
     const shape = new C.ConvexPolyhedron({ vertices: data.vertices.map(v => v.scale(diceScale)), faces: data.faces.map(f => [...f]) });
     const body = new C.Body({ mass: 1, shape, linearDamping: 0.2, angularDamping: 0.4,
-      sleepSpeedLimit: 0.3, sleepTimeLimit: 0.4 });
+      // Shorter sleepTimeLimit only shortens how long a body that's already stopped
+      // moving must wait before the simulation trusts it's settled - it doesn't touch
+      // the fall/bounce itself, but it does shave real time off every roll (server
+      // compute and the client's replay animation both stop as soon as all dice sleep).
+      sleepSpeedLimit: 0.3, sleepTimeLimit: 0.15 });
     body.position.set(((i % cols) - (cols - 1) / 2) * 2.5 * diceScale, 2.5 * diceScale + rng() * 2,
       (Math.floor(i / cols) - (rows - 1) / 2) * 2.5 * diceScale);
     // Uniform orientation from a random unit quaternion.
