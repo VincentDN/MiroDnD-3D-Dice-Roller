@@ -46,10 +46,11 @@ cd desktop
 npm ci
 npm test
 npm start
-npm run package:win
+npm run package:win        # portable folder/ZIP (electron-packager)
+npm run package:installer  # real Windows installer (electron-builder + NSIS)
 ```
 
-The desktop package is independent of the web app's pnpm workspace. Packaging creates `release/VincentsVibeRoller-win32-x64/`; distribute the whole folder as a ZIP. The host loads the existing published site and applies `overlay.css` to its OBS view inside the native interactive window. Version 0.5.1 requires the matching web update for softer audio, larger dice, single-pass roll animations and Markdown notes.
+The desktop package is independent of the web app's pnpm workspace. `package:win` creates `release/VincentsVibeRoller-win32-x64/`; distribute the whole folder as a ZIP - no Start Menu entry or uninstaller. `package:installer` creates `release/VincentsVibeRoller Setup <version>.exe`, an NSIS installer with a Start Menu entry, optional desktop shortcut and an uninstaller registered in Windows' "Add or remove programs"; it lets the user pick the install folder (assisted install, not one-click) and does not require admin rights (`perMachine: false`, per-user install). The host loads the existing published site and applies `overlay.css` to its OBS view inside the native interactive window. Version 0.5.1 requires the matching web update for softer audio, larger dice, single-pass roll animations and Markdown notes.
 
 Remote pages use a sandbox with Node integration disabled. The overlay receives a restricted resize bridge; the room window has no preload bridge. The packaged local control panel receives a narrow, sender-validated controls bridge. Navigation is restricted to the VincentsVibeRoller origin; popups and permission requests are denied. Downloads are limited to generated Markdown roll notebooks. Closing or hiding the controls does not stop shared-room polling.
 

@@ -10,10 +10,43 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "package:win": "electron-packager . VincentsVibeRoller --platform=win32 --arch=x64 --electron-version=44.3.0 --out=release --overwrite --icon=icon.ico --ignore=\"^/(release|tests|package-lock.json|README.md)$\""
+    "package:win": "electron-packager . VincentsVibeRoller --platform=win32 --arch=x64 --electron-version=44.3.0 --out=release --overwrite --icon=icon.ico --ignore=\"^/(release|tests|package-lock.json|README.md)$\"",
+    "package:installer": "electron-builder --win nsis --publish=never"
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",
-    "electron": "44.3.0"
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.rollparty.desktop",
+    "productName": "VincentsVibeRoller",
+    "copyright": "Copyright © Vincent De Nil",
+    "asar": true,
+    "files": [
+      "**/*",
+      "!tests/**",
+      "!release/**",
+      "!*.log"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "."
+    },
+    "publish": null,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VincentsVibeRoller"
+    }
   }
 }
