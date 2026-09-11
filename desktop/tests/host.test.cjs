@@ -47,13 +47,14 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
     getAllDisplays: () => displays, getPrimaryDisplay: () => displays[0], getDisplayMatching: () => displays[0],
   });
   class Tray extends EventEmitter { setToolTip() {} setContextMenu() {} destroy() {} }
+  const remoteSession = Object.assign(new EventEmitter(), {
+    setPermissionRequestHandler() {}, setPermissionCheckHandler() {},
+  });
   const electron = { app, screen, BrowserWindow: Window, Tray,
     Menu: { buildFromTemplate: (x) => x },
     ipcMain: { handle: (name, fn) => handlers.set(name, fn), on: (name, fn) => handlers.set(name, fn) },
     globalShortcut: { register: () => true, unregisterAll() {} },
-    session: { fromPartition: () => Object.assign(new EventEmitter(), {
-      setPermissionRequestHandler() {}, setPermissionCheckHandler() {},
-    }) },
+    session: { fromPartition: () => remoteSession },
   };
   const directory = path.resolve(__dirname, '..');
   vm.runInNewContext(fs.readFileSync(path.join(directory, 'main.cjs'), 'utf8'), {
@@ -84,6 +85,23 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   assert.equal(overlay.webContents.muted,false);
   assert.equal(overlay.inactive, true);
   assert.equal(overlay.focused, undefined);
+  const checkDownload = (url, mime, filename, sender = room.webContents) => {
+    let prevented = false, dialog;
+    remoteSession.emit('will-download', { preventDefault() { prevented = true; } }, {
+      getURL: () => url, getMimeType: () => mime, getFilename: () => filename,
+      setSaveDialogOptions(options) { dialog = options; },
+    }, sender);
+    return { prevented, dialog };
+  };
+  const notebookURL = 'blob:' + config.SITE_ORIGIN + '/notebook';
+  const notebookName = 'VincentsVibeRoller-rolls-2026-09-11.md';
+  const download = checkDownload(notebookURL, 'text/markdown', notebookName);
+  assert.equal(download.prevented, false);
+  assert.deepEqual(Array.from(download.dialog.filters[0].extensions), ['md']);
+  assert.equal(checkDownload(notebookURL, 'application/octet-stream', notebookName).prevented, true);
+  assert.equal(checkDownload('https://evil.test/file', 'text/markdown', notebookName).prevented, true);
+  assert.equal(checkDownload(notebookURL, 'text/markdown', 'program.exe').prevented, true);
+  assert.equal(checkDownload(notebookURL, 'text/markdown', notebookName, {getURL: () => 'https://evil.test/'}).prevented, true);
   handlers.get('overlay:resize')({ sender:overlay.webContents, senderFrame:overlay.webContents.mainFrame }, 600, 500);
   assert.equal(overlay.bounds.width, 600);
   assert.equal(overlay.bounds.height, 500);

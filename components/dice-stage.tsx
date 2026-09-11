@@ -85,20 +85,22 @@ function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: bo
   }
   return group;
 }
-export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, onSettled, onThrow }: {
-  roll: Roll | null; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[]) => void;
+export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow }: {
+  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[]) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const settledCallback = useRef(onSettled);
   settledCallback.current = onSettled;
   const throwCallback = useRef(onThrow);
   throwCallback.current = onThrow;
+  const rendererRef = useRef<T.WebGLRenderer | null>(null);
+  useEffect(() => () => { rendererRef.current?.dispose(); rendererRef.current = null; }, []);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     const el = host.current!;
     let renderer: T.WebGLRenderer;
-    try { renderer = new T.WebGLRenderer({alpha: true, antialias: true}); }
-    catch { setFailed(true); return; }
+    try { renderer = rendererRef.current ??= new T.WebGLRenderer({alpha: true, antialias: true}); }
+    catch { setFailed(true); if(roll) settledCallback.current?.(roll.id); return; }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor(0, 0);
     renderer.shadowMap.enabled = true;
     el.appendChild(renderer.domElement);
@@ -111,10 +113,11 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     scene.add(light);
     const floor = new T.Mesh(new T.PlaneGeometry(100,100), new T.ShadowMaterial({opacity:.22}));
     floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+    const diceScale = (roll?.physics?.diceScale ?? (roll ? 1 : sizeMultiplier > 1 ? 2 : 1));
     const logical = roll?.dice || [{sides:20,value:20,kept:true}];
     const dice = logical.flatMap(d => d.sides === 100 ? [{...d,sides:10,tens:true},{...d,sides:10,units:true}] : [d]);
-    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release);
-    const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); scene.add(group); return group; });
+    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release, diceScale);
+    const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); group.scale.setScalar(diceScale); scene.add(group); return group; });
     let step = 0, replay = Boolean(roll?.physics), dragged = false;
     let notified = false;
     const notify = () => {
@@ -139,14 +142,14 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         const q = new T.Quaternion().setFromUnitVectors(new T.Vector3(normal.x,normal.y,normal.z),new T.Vector3(0,dice[i].sides===4?-1:1,0));
         body.quaternion.set(q.x,q.y,q.z,q.w);
         const low = Math.min(...hull(dice[i].sides).vertices.map(v => body.quaternion.vmult(v).y));
-        body.position.y = -low+.01; body.velocity.setZero();body.angularVelocity.setZero();body.sleep();
+        body.position.y = -low*diceScale+.01; body.velocity.setZero();body.angularVelocity.setZero();body.sleep();
       });
       notify();
     } else if (matchMedia('(prefers-reduced-motion: reduce)').matches) finish();
     for (const body of table.bodies) body.addEventListener('collide', (event: { contact: C.ContactEquation }) => {
       if ((replay && fresh) || dragged) diceImpact(Math.abs(event.contact.getImpactVelocityAlongNormal()));
     });
-    const ray = new T.Raycaster(), pointer = new T.Vector2(), dragPlane = new T.Plane(new T.Vector3(0,1,0),-1.6);
+    const ray = new T.Raycaster(), pointer = new T.Vector2(), dragPlane = new T.Plane(new T.Vector3(0,1,0),-1.6*diceScale);
     const anchor = new C.Body({mass:0, type:C.Body.KINEMATIC, collisionFilterGroup:0, collisionFilterMask:0});
     table.world.addBody(anchor);
     let constraint: C.PointToPointConstraint | null = null, pointerId: number | null = null;
@@ -159,8 +162,8 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
       if (!constraint) return;
       locate(e); const hit = new T.Vector3();
       if (ray.ray.intersectPlane(dragPlane,hit)) anchor.position.set(
-        T.MathUtils.clamp(hit.x,-table.width/2+1.1,table.width/2-1.1),1.6,
-        T.MathUtils.clamp(hit.z,-table.depth/2+1.1,table.depth/2-1.1));
+        T.MathUtils.clamp(hit.x,-table.width/2+1.1*diceScale,table.width/2-1.1*diceScale),1.6*diceScale,
+        T.MathUtils.clamp(hit.z,-table.depth/2+1.1*diceScale,table.depth/2-1.1*diceScale));
     }
     function down(e: PointerEvent) {
       unlockSound();
@@ -211,19 +214,25 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         accumulator-=STEP;
       }
       table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
-      el.style.cursor=replay?'progress':constraint?'grabbing':interactive?'grab':'default';
+      el.style.cursor=(replay)?'progress':constraint?'grabbing':interactive?'grab':'default';
       renderer.render(scene,camera); frame=requestAnimationFrame(animate);
     };
     frame=requestAnimationFrame(animate);
     return ()=> {
       cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('blur',up);up();
+      renderer.domElement.removeEventListener('pointerdown',down);
+      renderer.domElement.removeEventListener('pointermove',move);
+      renderer.domElement.removeEventListener('pointerup',up);
+      renderer.domElement.removeEventListener('pointercancel',up);
+      renderer.domElement.removeEventListener('lostpointercapture',up);
       scene.traverse(object=> {const mesh=object as T.Mesh;mesh.geometry?.dispose();
         const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
         materials.forEach(m=> {if(m){(m as T.MeshBasicMaterial).map?.dispose();m.dispose();}}); });
-      renderer.dispose();renderer.domElement.remove();
+      renderer.domElement.remove();
     };
   }, [roll,transparent,color,sizeMultiplier,interactive,fresh]);
-  return <div className="dice-canvas" ref={host} aria-label="Physics dice tray: drag to move, throw firmly to record a new roll">
+  return <div className="dice-canvas" ref={host} aria-busy={Boolean(pendingExpression)} aria-label="Physics dice tray: drag to move, throw firmly to record a new roll">
+    {pendingExpression && <span className="roll-waiting" role="status">Rolling…</span>}
     {failed && <p className="render-error">3D graphics unavailable. Your roll result is still shown below.</p>}
   </div>;
 }

@@ -1,7 +1,7 @@
 {
   "name": "rollparty-desktop",
-  "productName": "Rollparty Desktop",
-  "version": "0.4.0",
+  "productName": "VincentsVibeRoller",
+  "version": "0.5.1",
   "description": "Transparent, interactive D&D dice over Miro and other desktop apps",
   "author": "Vincent De Nil",
   "license": "MIT",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "package:win": "electron-packager . Rollparty --platform=win32 --arch=x64 --electron-version=44.3.0 --out=release --overwrite --icon=icon.ico --ignore=\"^/(release|tests|package-lock.json|README.md)$\""
+    "package:win": "electron-packager . VincentsVibeRoller --platform=win32 --arch=x64 --electron-version=44.3.0 --out=release --overwrite --icon=icon.ico --ignore=\"^/(release|tests|package-lock.json|README.md)$\""
   },
   "devDependencies": {
     "@electron/packager": "20.3.0",

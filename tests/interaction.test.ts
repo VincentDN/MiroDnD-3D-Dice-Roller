@@ -44,3 +44,19 @@ test('a deliberate mouse throw generates a replayable new outcome from release m
   assert.throws(()=>evaluateThrow('1d6',undefined as never));
   assert.throws(()=>evaluateThrow('1d6',[{...release[0],p:[999,1,0]}]));
 });
+
+test('double-sized desktop dice retain matching collision hulls and replayable throws',()=> {
+  const table=replayTable([20],123,undefined,2);
+  const small=replayTable([20],123);
+  assert.equal(table.bodies[0].shapes[0].boundingSphereRadius,small.bodies[0].shapes[0].boundingSphereRadius*2);
+  for(const sides of [[4],[6],[8],[10],[12],[20],[100],[6,6,6,6]]) {
+    const result=simulate(sides,123,undefined,2);
+    assert.equal(result.physics.diceScale,2);
+    const replay=replayTable(sides,123,undefined,2);
+    for(let i=0;i<result.physics.steps;i++)replay.world.step(STEP);
+    assert.deepEqual(replay.bodies.map(b=>[b.position.x,b.position.y,b.position.z]),result.physics.poses.map(p=>p.p));
+  }
+  const result=simulate([20],123,undefined,2);
+  const release=result.physics.poses.map(p=>({...p,v:[3,2,0],w:[8,4,2]}));
+  assert.equal(evaluateThrow('1d20',release,2).physics.diceScale,2);
+});

@@ -2,9 +2,10 @@ export const SIDES = [4, 6, 8, 10, 12, 20, 100];
 export type Die = { sides: number; value: number; kept: boolean };
 export type Roll = {
   id: string;
+  playerId?: string;
   seq?: number;
   parent?: string;
-  physics?: { seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
+  physics?: { diceScale?: number; seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
   name: string;
   color: string;
   expression: string;

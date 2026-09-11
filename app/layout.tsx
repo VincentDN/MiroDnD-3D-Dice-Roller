@@ -13,7 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Rollparty — shared 3D dice',
+  title: 'VincentsVibeRoller - shared 3D dice',
+  icons: { icon: '/app-icon.png', apple: '/app-icon.png' },
   description: 'Shared D&D dice rooms and transparent overlays.',
 };
 

@@ -23,9 +23,9 @@ test('rejects credentials, untrusted hosts, protocols, paths and malformed capab
 });
 test('compact lower-left window respects taskbars, negative monitor coordinates and odd sizes', () => {
   assert.deepEqual(lowerLeftBounds({ x: 0, y: 0, width: 1920, height: 1040 }),
-    { x: 0, y: 600, width: 520, height: 440 });
+    { x: 0, y: 280, width: 680, height: 760 });
   assert.deepEqual(lowerLeftBounds({ x: -1920, y: -200, width: 1920, height: 1080 }),
-    { x: -1920, y: 440, width: 520, height: 440 });
+    { x: -1920, y: 120, width: 680, height: 760 });
   assert.deepEqual(lowerLeftBounds({ x: 48, y: 24, width: 1365, height: 743 }),
-    { x: 48, y: 327, width: 520, height: 440 });
+    { x: 48, y: 24, width: 680, height: 743 });
 });

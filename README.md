@@ -3,7 +3,7 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 ## Play online
 
-[Open Rollparty](https://rollparty-dnd.vdn1561.chatgpt.site), enter a name, choose a dice color, and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
+[Open VincentsVibeRoller](https://rollparty-dnd.vdn1561.chatgpt.site), enter a name, choose a dice color, and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
 
 - Numbered 3D d4, d6, d8, d10, d12, d20 and percentile dice.
 - Mixed dice pools and modifiers: `2d6+1d4+3`.
@@ -17,6 +17,10 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 ## Transparent desktop window over Miro
 
 The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, interactive window initially in the **lower left** of your selected monitor. Drag its header to move it, or use its corner grip to resize it. Roll directly in the overlay. Dice use a fixed orthographic projection; their apparent size does not change while moving. The desktop tray has a purple backdrop, collision sounds, a result ping and a brass fanfare for a kept natural 20. Save named combinations directly in the overlay; presets and mute preference persist on this device. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop while receiving mouse input inside its own window. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
+
+## Personal roll notebook
+
+Open **My roll notes** in the console to comment on your own rolls and choose **Save Markdown** to export them. The latest 1,000 rolls are stored on this device for each room and player. Comments remain after reload; export a file to keep a lasting session record.
 
 ## OBS overlay
 
@@ -45,7 +49,7 @@ If your Wrangler resolves relative paths against its configuration directory, us
 
 - `pnpm build`: Cloudflare Worker and browser assets.
 - `pnpm exec tsc --noEmit`: type validation.
-- `node --experimental-strip-types --test tests/dice.test.ts tests/geometry.test.ts tests/physics.test.ts tests/interaction.test.ts`: dice rules and face geometry.
+- `node --experimental-strip-types --test tests/dice.test.ts tests/geometry.test.ts tests/physics.test.ts tests/interaction.test.ts tests/notebook.test.ts`: dice rules and face geometry.
 - `node tests/session.mjs`: integration test against the running local server. Creates an isolated test room, verifies two players observe identical results, retry deduplication, profile persistence, and access isolation.
 
 Stack: React, Vinext, Three.js, Cloudflare Workers and D1. The logical Sites binding is in `.openai/hosting.json`; schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
