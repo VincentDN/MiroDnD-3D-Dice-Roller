@@ -4,6 +4,7 @@ const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
 const { EventEmitter } = require('node:events');
+const os = require('node:os');
 const config = require('../config.cjs');
 
 // Exercise host orchestration without pretending this verifies the Windows compositor.
@@ -39,10 +40,13 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
     }
     async loadFile(file) { this.webContents.mainFrame.url = require('node:url').pathToFileURL(file).href; }
   }
+  const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rollparty-test-'));
   const app = Object.assign(new EventEmitter(), {
     requestSingleInstanceLock: () => true, whenReady: async () => {},
-    setAppUserModelId() {}, quit() {},
+    setAppUserModelId() {}, quit() {}, getPath: (name) => name === 'userData' ? userDataDir : os.tmpdir(),
   });
+  let dialogResult = { canceled: true, filePaths: [] };
+  const dialog = { showOpenDialog: async () => dialogResult };
   const screen = Object.assign(new EventEmitter(), {
     getAllDisplays: () => displays, getPrimaryDisplay: () => displays[0], getDisplayMatching: () => displays[0],
   });
@@ -50,7 +54,7 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   const remoteSession = Object.assign(new EventEmitter(), {
     setPermissionRequestHandler() {}, setPermissionCheckHandler() {},
   });
-  const electron = { app, screen, BrowserWindow: Window, Tray,
+  const electron = { app, screen, BrowserWindow: Window, Tray, dialog,
     Menu: { buildFromTemplate: (x) => x },
     ipcMain: { handle: (name, fn) => handlers.set(name, fn), on: (name, fn) => handlers.set(name, fn) },
     globalShortcut: { register: () => true, unregisterAll() {} },
@@ -102,6 +106,26 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   assert.equal(checkDownload('https://evil.test/file', 'text/markdown', notebookName).prevented, true);
   assert.equal(checkDownload(notebookURL, 'text/markdown', 'program.exe').prevented, true);
   assert.equal(checkDownload(notebookURL, 'text/markdown', notebookName, {getURL: () => 'https://evil.test/'}).prevented, true);
+  // A configured roll-notebook save folder persists to disk and saves silently, no dialog.
+  assert.equal(call('state').savePath, '');
+  const chosenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rollparty-notebooks-'));
+  dialogResult = { canceled: false, filePaths: [chosenDir] };
+  assert.equal(await call('choose-save-path'), chosenDir);
+  assert.equal(call('state').savePath, chosenDir);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(userDataDir, 'settings.json'), 'utf8')), { savePath: chosenDir });
+  let savedTo, promptedDialog = false;
+  remoteSession.emit('will-download', { preventDefault() {} }, {
+    getURL: () => notebookURL, getMimeType: () => 'text/markdown', getFilename: () => notebookName,
+    setSavePath: (p) => { savedTo = p; }, setSaveDialogOptions: () => { promptedDialog = true; },
+  }, room.webContents);
+  assert.equal(savedTo, path.join(chosenDir, notebookName));
+  assert.equal(promptedDialog, false);
+  // Canceling the folder picker leaves the existing choice untouched.
+  dialogResult = { canceled: true, filePaths: [] };
+  assert.equal(await call('choose-save-path'), chosenDir);
+  assert.equal(await call('clear-save-path'), '');
+  assert.equal(call('state').savePath, '');
+  assert.equal(checkDownload(notebookURL, 'text/markdown', notebookName).dialog?.filters[0].extensions[0], 'md');
   handlers.get('overlay:resize')({ sender:overlay.webContents, senderFrame:overlay.webContents.mainFrame }, 600, 500);
   assert.equal(overlay.bounds.width, 600);
   assert.equal(overlay.bounds.height, 500);

@@ -11,6 +11,8 @@ function render(state) {
   $('display').value = String(state.displayId);
   $('visible').checked = state.visible;
   $('history').checked = state.history;
+  $('save-path').textContent = state.savePath ? state.savePath : 'Not set - Save Markdown will ask each time.';
+  $('clear-save-path').hidden = !state.savePath;
   $('roller').textContent = state.hasRoom ? 'Open roller' : 'Create a room / open roller';
   $('status').textContent = !state.hasRoom ? 'Create or join a room to start.'
     : !state.visible ? 'Dice hidden. Your room stays connected.'
@@ -38,6 +40,8 @@ $('roller').addEventListener('click', () => act(() => window.rollparty.showRoom(
 $('display').addEventListener('change', () => act(() => window.rollparty.setDisplay(Number($('display').value))));
 $('visible').addEventListener('change', () => act(() => window.rollparty.setVisible($('visible').checked)));
 $('history').addEventListener('change', () => act(() => window.rollparty.setHistory($('history').checked)));
+$('choose-save-path').addEventListener('click', () => act(() => window.rollparty.chooseSavePath()));
+$('clear-save-path').addEventListener('click', () => act(() => window.rollparty.clearSavePath()));
 $('retry').addEventListener('click', () => act(() => window.rollparty.retry()));
 $('quit').addEventListener('click', () => act(() => window.rollparty.quit()));
 window.rollparty.onState(render);

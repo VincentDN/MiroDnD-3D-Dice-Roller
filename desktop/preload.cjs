@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('rollparty', {
   setDisplay: (id) => ipcRenderer.invoke('desktop:display', id),
   setVisible: (visible) => ipcRenderer.invoke('desktop:visible', visible),
   setHistory: (visible) => ipcRenderer.invoke('desktop:history', visible),
+  chooseSavePath: () => ipcRenderer.invoke('desktop:choose-save-path'),
+  clearSavePath: () => ipcRenderer.invoke('desktop:clear-save-path'),
   retry: () => ipcRenderer.invoke('desktop:retry'),
   quit: () => ipcRenderer.invoke('desktop:quit'),
   onState: (callback) => {

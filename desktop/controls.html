@@ -23,6 +23,11 @@
       <label class="check"><input id="visible" type="checkbox" checked>Show dice over other apps</label>
       <label class="check"><input id="history" type="checkbox">Show recent roll results below the dice</label>
     </div>
+    <div class="settings">
+      <label>Roll notebook save folder</label>
+      <p id="save-path" class="hint">Not set - Save Markdown will ask each time.</p>
+      <div class="join"><button id="choose-save-path" type="button">Choose folder…</button><button id="clear-save-path" type="button" class="text" hidden>Use default</button></div>
+    </div>
     <p id="status" role="status">Create or join a room to start.</p>
     <p id="error" role="alert" hidden></p>
     <button id="retry" class="text">Reconnect</button>

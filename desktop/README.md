@@ -61,4 +61,6 @@ The v0.5 overlay creates dice at twice the physical size, with matching collisio
 
 ## Roll notebook
 
-Open **My roll notes** in the roll console to add a comment to any of your own rolls. The latest 1,000 are saved on this device for the room and player. **Save Markdown** exports the rolls, individual values, totals, timestamps and comments as a `.md` file. The Windows app opens a save dialog. Save a file periodically for a lasting session record.
+Open **My roll notes** in the roll console to add a comment to any of your own rolls. The latest 1,000 are saved on this device for the room and player. **Save Markdown** exports the rolls, individual values, totals, timestamps and comments as a `.md` file.
+
+By default the Windows app opens a save dialog for each export. Set a default folder in **Desktop controls → Roll notebook save folder → Choose folder…** to save silently there instead; **Use default** switches back to asking every time. The choice is stored in `settings.json` under the app's user-data folder (`%APPDATA%\VincentsVibeRoller` once packaged) and is independent of any room. Save a file periodically for a lasting session record.

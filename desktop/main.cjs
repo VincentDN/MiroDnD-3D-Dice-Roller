@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, session, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -9,12 +9,29 @@ const overlayCSS = fs.readFileSync(path.join(__dirname, 'overlay.css'), 'utf8');
 let panel, room, overlay, tray;
 let key = '', displayId, visible = true, history = true, quitting = false;
 let overlayReady = false, overlayError = '', historyCSS, navigation = 0;
+let savePath = '';
 const shortcuts = [];
+
+// A small on-disk preference, independent of any room: where roll-notebook
+// Markdown exports save without a dialog each time. Missing/corrupt data
+// just means "ask every time" - never a startup failure.
+function settingsFile() {
+  return path.join(app.getPath('userData'), 'settings.json');
+}
+function loadSettings() {
+  try {
+    const data = JSON.parse(fs.readFileSync(settingsFile(), 'utf8'));
+    return typeof data?.savePath === 'string' ? data.savePath : '';
+  } catch { return ''; }
+}
+function saveSettings() {
+  try { fs.writeFileSync(settingsFile(), JSON.stringify({ savePath })); } catch { /* Non-critical: worst case, the next launch asks again. */ }
+}
 
 function state() {
   return {
     hasRoom: Boolean(key), visible, history, displayId, overlayReady, error: overlayError,
-    shortcuts,
+    savePath, shortcuts,
     displays: screen.getAllDisplays().map((d, i) => ({
       id: d.id, label: `${d.label || `Monitor ${i + 1}`} (${d.bounds.width} × ${d.bounds.height})`,
     })),
@@ -158,14 +175,19 @@ else {
     const remoteSession = session.fromPartition('persist:rollparty');
     remoteSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     remoteSession.setPermissionCheckHandler(() => false);
+    savePath = loadSettings();
     remoteSession.on('will-download', (event, item, contents) => {
       // Only our generated Markdown notebooks may leave the remote app as files.
       const allowed = contents && isRoomSite(contents.getURL()) &&
         item.getURL().startsWith('blob:' + SITE_ORIGIN + '/') &&
         item.getMimeType() === 'text/markdown' &&
         /^VincentsVibeRoller-rolls-\d{4}-\d{2}-\d{2}\.md$/.test(item.getFilename());
-      if (!allowed) event.preventDefault();
-      else item.setSaveDialogOptions({title:'Save roll notebook',filters:[{name:'Markdown',extensions:['md']}]});
+      if (!allowed) { event.preventDefault(); return; }
+      // A configured folder saves silently; otherwise fall back to the save dialog.
+      if (savePath) {
+        try { item.setSavePath(path.join(savePath, item.getFilename())); return; } catch { /* Folder may have been deleted; ask instead. */ }
+      }
+      item.setSaveDialogOptions({title:'Save roll notebook',filters:[{name:'Markdown',extensions:['md']}]});
     });
     panel = new BrowserWindow({ width: 490, height: 650, minWidth: 440, minHeight: 600,
       title: 'VincentsVibeRoller Desktop', backgroundColor: '#10151c', autoHideMenuBar: true,
@@ -228,6 +250,24 @@ else {
     handle('desktop:retry', () => {
       if (key) void loadOverlay();
       else showRoom();
+    });
+    handle('desktop:choose-save-path', async () => {
+      const result = await dialog.showOpenDialog(panel, {
+        title: 'Choose a folder for roll notebook exports',
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      if (!result.canceled && result.filePaths[0]) {
+        savePath = result.filePaths[0];
+        saveSettings();
+        broadcast();
+      }
+      return savePath;
+    });
+    handle('desktop:clear-save-path', () => {
+      savePath = '';
+      saveSettings();
+      broadcast();
+      return savePath;
     });
     handle('desktop:quit', () => app.quit());
     for (const event of ['display-added', 'display-removed', 'display-metrics-changed']) screen.on(event, positionOverlay);
