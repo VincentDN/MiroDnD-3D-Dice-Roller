@@ -3,7 +3,7 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 ## Play online
 
-[Open VincentsVibeRoller](https://rollparty-dnd.vdn1561.chatgpt.site), enter a name, choose a dice color, and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
+[Open VincentsVibeRoller](https://rollparty-dnd.vdn1561.chatgpt.site), enter a name, choose an icon (sets your dice color), and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
 
 - Numbered 3D d4, d6, d8, d10, d12, d20 and percentile dice.
 - Mixed dice pools and modifiers: `2d6+1d4+3`.
@@ -15,6 +15,8 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 - Every client polls the shared D1 room about every 1.2 seconds, queues new animations, and reconnects automatically. This is near-real-time synchronization, not WebSockets.
 
 ## Transparent desktop window over Miro
+
+**[Download the Windows installer](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/releases/latest)** - no build tools needed, just run the `.exe` and install. It's unsigned, so Windows SmartScreen may warn on first run (**More info → Run anyway**). Built automatically from `main` by [`.github/workflows/build-desktop.yml`](.github/workflows/build-desktop.yml); see [`desktop/README.md`](desktop/README.md) if you'd rather build it yourself from source.
 
 The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, interactive window initially in the **lower left** of your selected monitor. Drag its header to move it, or use its corner grip to resize it. Roll directly in the overlay. Dice use a fixed orthographic projection; their apparent size does not change while moving. The desktop tray has a purple backdrop, collision sounds, a result ping and a brass fanfare for a kept natural 20. Save named combinations directly in the overlay; presets and mute preference persist on this device. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop while receiving mouse input inside its own window. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
 
