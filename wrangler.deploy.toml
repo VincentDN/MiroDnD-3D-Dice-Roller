@@ -5,9 +5,13 @@
 # docs/cloudflare-deploy.md for the full walkthrough, including why this
 # uses `wrangler deploy` and not `wrangler pages deploy`.
 #
-# This file is independent of `.openai/hosting.json`, which only configures
-# OpenAI's own "Sites" hosting control plane (used by `pnpm dev`/`pnpm start`
-# locally) - it has no effect on this deploy path.
+# Deliberately NOT named wrangler.toml: @cloudflare/vite-plugin (used by
+# `pnpm dev`/`pnpm build`/`pnpm start`) auto-loads a root wrangler.toml/json
+# as a base and merges vite.config.ts's own D1 binding on top of it, which
+# duplicates the "DB" binding and breaks local dev. `pnpm run deploy` passes
+# --config to point wrangler at this file explicitly instead. This file is
+# otherwise independent of `.openai/hosting.json`, which only configures
+# OpenAI's own "Sites" hosting control plane used locally.
 
 name = "vincentsviberoller"
 main = "dist/server/index.js"

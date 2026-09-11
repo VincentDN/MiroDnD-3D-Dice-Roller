@@ -16,7 +16,7 @@ works and isn't going away, but Cloudflare has said new investment and
 features go to Workers. `pnpm run build` already produces a
 Workers-with-assets build (see `dist/server/wrangler.json` after building:
 it has a `main` worker script, an `assets` directory, and a `d1_databases`
-binding - the same shape this repo's own `wrangler.toml` uses), so this is
+binding - the same shape this repo's own `wrangler.deploy.toml` uses), so this is
 also the least-friction path: no build-output restructuring needed.
 
 If you specifically want the Pages *product* (e.g. for its git-push preview
@@ -35,7 +35,7 @@ wrangler login          # opens a browser to authorize this CLI against your Clo
 pnpm run cf:d1:create   # creates a D1 database named "vincentsviberoller"
 ```
 
-`cf:d1:create` prints a `database_id`. Put it in `wrangler.toml` at the repo
+`cf:d1:create` prints a `database_id`. Put it in `wrangler.deploy.toml` at the repo
 root, replacing the `00000000-...` placeholder under `[[d1_databases]]`.
 
 Apply the schema to that new (empty) database:
@@ -54,9 +54,15 @@ migrations later (`pnpm run db:generate`), apply each new file the same way.
 pnpm run deploy
 ```
 
-This runs `vinext build` then `wrangler deploy`, reading the root
-`wrangler.toml`. Wrangler prints a `*.workers.dev` URL when it finishes -
-open it to confirm the lobby loads and you can create a room.
+This runs `vinext build` then `wrangler deploy --config wrangler.deploy.toml`.
+It's not named plain `wrangler.toml` on purpose: the local dev build
+(`pnpm dev`/`pnpm build`/`pnpm start`, via `@cloudflare/vite-plugin` in
+`vite.config.ts`) auto-loads a root `wrangler.toml` as a base config and
+would merge its own D1 binding on top, duplicating the `DB` binding and
+breaking local dev - so the deploy config lives under a different filename
+and is only used when explicitly passed with `--config`. Wrangler prints a
+`*.workers.dev` URL when it finishes - open it to confirm the lobby loads
+and you can create a room.
 
 ## Attaching your dev domain
 
@@ -66,7 +72,7 @@ of a zone you already manage there). Then either:
 
 - **Dashboard**: Workers & Pages → your worker (`vincentsviberoller`) →
   **Settings → Domains & Routes → Add → Custom domain**, or
-- **wrangler.toml**: uncomment the `[[routes]]` block at the bottom of the
+- **wrangler.deploy.toml**: uncomment the `[[routes]]` block at the bottom of the
   file, set `pattern` to your domain, and re-run `pnpm run deploy`.
 
 Either way, Cloudflare provisions the certificate automatically - no manual
