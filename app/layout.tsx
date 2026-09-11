@@ -28,6 +28,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* Applies a saved theme before paint so switching pages/reloading never flashes the default theme. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var s=JSON.parse(localStorage.getItem('rollparty:settings')||'null');var t=s&&s.theme;if(t==='drakkenheim'||t==='miro-light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();",
+          }}
+        />
         {children}
       </body>
     </html>

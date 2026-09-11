@@ -18,10 +18,12 @@ import {
   Volume2,
   VolumeX,
   BookmarkPlus,
+  Settings as SettingsIcon,
   X,
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
 import RollNotebook from '@/components/roll-notebook';
+import SettingsPanel, { useSettings } from '@/components/settings-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion } from '@/lib/dice-physics';
 import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
@@ -91,6 +93,10 @@ export default function Home() {
     if(value)unlockSound();
   }
   const soundButton=<Button variant="ghost" size="sm" onClick={toggleSound} aria-label={sound?'Mute sounds':'Enable sounds'} title={sound?'Mute sounds':'Enable sounds'} aria-pressed={sound}>{sound?<Volume2 size={18}/>:<VolumeX size={18}/>}</Button>;
+  const [settings, updateSettings] = useSettings();
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsButton=<Button variant="ghost" size="sm" onClick={()=>setShowSettings(s=>!s)} aria-label="Settings" title="Settings" aria-pressed={showSettings}><SettingsIcon size={18}/></Button>;
+  const settingsPanel=showSettings && <SettingsPanel settings={settings} update={updateSettings} onClose={()=>setShowSettings(false)} desktop={desktop}/>;
   const queue = useRef<Roll[]>([]),
     last = useRef(0),
     seen = useRef(new Set<string>()),
@@ -408,6 +414,7 @@ export default function Home() {
     return (
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         <div className="overlay-corner">
+          {settingsPanel}
           {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
           {(active || desktop) && <DiceStage pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
           {desktop && <section className="desktop-roll-controls">
@@ -415,7 +422,7 @@ export default function Home() {
               <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
               <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
             </form> : <>
-              <div className="desktop-dice-picker">{soundButton}{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
+              <div className="desktop-dice-picker">{soundButton}{settingsButton}{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
               <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
                 <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
                 <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
@@ -455,12 +462,14 @@ export default function Home() {
     );
   return (
     <main className="app">
+      {settingsPanel}
       <header>
         <a className="brand" href="/">
           <Dices /> VincentsVibeRoller<span> / D&D</span>
         </a>
         <div className="header-actions">
           {soundButton}
+          {settingsButton}
           {key && (
             <>
               <Button
