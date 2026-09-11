@@ -1,4 +1,4 @@
-const SITE_ORIGIN = 'https://rollparty-dnd.vdn1561.chatgpt.site';
+const SITE_ORIGIN = 'https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev';
 
 function isRoomSite(raw) {
   try {

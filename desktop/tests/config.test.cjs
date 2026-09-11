@@ -11,10 +11,11 @@ test('normal and OBS invites open the same room without carrying extra URL param
 });
 test('rejects credentials, untrusted hosts, protocols, paths and malformed capabilities', () => {
   const key = 'a'.repeat(64);
+  const host = new URL(SITE_ORIGIN).host;
   for (const url of [
-    `http://rollparty-dnd.vdn1561.chatgpt.site/#room=${key}`,
+    `http://${host}/#room=${key}`,
     `${SITE_ORIGIN}.evil.test/#room=${key}`,
-    `https://user:pass@rollparty-dnd.vdn1561.chatgpt.site/#room=${key}`,
+    `https://user:pass@${host}/#room=${key}`,
     `${SITE_ORIGIN}/elsewhere#room=${key}`, 'file:///tmp/test', 'javascript:alert(1)',
     `${SITE_ORIGIN}/#room=bad`, `${SITE_ORIGIN}/#room=${'a'.repeat(63)}`,
   ]) assert.throws(() => roomKey(url));

@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { updateSiteOrigin } = require('../scripts/set-site-origin.cjs');
 
-const sample = "const SITE_ORIGIN = 'https://rollparty-dnd.vdn1561.chatgpt.site';\n\nfunction isRoomSite(raw) {\n";
+const sample = "const SITE_ORIGIN = 'https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev';\n\nfunction isRoomSite(raw) {\n";
 
 test('swaps only the SITE_ORIGIN constant for a valid https origin', () => {
   const next = updateSiteOrigin(sample, 'https://dice.example.com');

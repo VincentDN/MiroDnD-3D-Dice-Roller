@@ -1,8 +1,12 @@
 # Deploying to your own Cloudflare account
 
-This app is currently hosted through OpenAI's "Sites" control plane
-(`.openai/hosting.json`, the `project_id` in that file). This doc covers
-deploying it independently, to your own Cloudflare account and domain.
+The live site (linked from the root README, and what `desktop/config.cjs`'s
+`SITE_ORIGIN` points at by default) runs on Cloudflare Workers, deployed via
+`wrangler.deploy.toml` in this repo - it is no longer hosted through OpenAI's
+"Sites" control plane (`.openai/hosting.json` now only configures the
+*local-dev* D1 binding; see the last section below). This doc covers
+deploying your own separate copy - a fork, a staging environment, or just a
+personal instance - to a Cloudflare account and domain of your choosing.
 
 ## Why Workers, not "Pages"
 
@@ -73,7 +77,8 @@ You need the domain (or a subdomain of one) added to your Cloudflare
 account first (Cloudflare dashboard → **Add a domain**, or use a subdomain
 of a zone you already manage there). Then either:
 
-- **Dashboard**: Workers & Pages → your worker (`vincentsviberoller`) →
+- **Dashboard**: Workers & Pages → your worker (`mirodnd-3d-dice-roller`, or
+  whatever you named it in `wrangler.deploy.toml`) →
   **Settings → Domains & Routes → Add → Custom domain**, or
 - **wrangler.deploy.toml**: uncomment the `[[routes]]` block at the bottom of the
   file, set `pattern` to your domain, and re-run `pnpm run deploy`.
@@ -81,10 +86,11 @@ of a zone you already manage there). Then either:
 Either way, Cloudflare provisions the certificate automatically - no manual
 DNS/TLS steps beyond having the domain on your account.
 
-## Pointing the desktop app at it
+## Pointing the desktop app at your own copy instead
 
-`desktop/config.cjs` hardcodes `SITE_ORIGIN` to the current OpenAI-hosted
-domain. Building the desktop app against your own deployment instead:
+`desktop/config.cjs` hardcodes `SITE_ORIGIN` to the project's live Cloudflare
+deployment by default. Building the desktop app against your own separate
+deployment instead:
 
 ```sh
 cd desktop
@@ -95,7 +101,8 @@ ROLLPARTY_SITE_ORIGIN=https://your-domain.example npm run package:installer
 before packaging when that env var is set (no-op, so the default build is
 unaffected, if you leave it unset). It edits `desktop/config.cjs` on disk;
 `git checkout desktop/config.cjs` afterwards if you don't want to commit
-that change, or commit it if this *is* your project's new permanent domain.
+that change, or commit it if this *is* meant to become the project's new
+permanent default.
 
 ## Local development against your own database
 

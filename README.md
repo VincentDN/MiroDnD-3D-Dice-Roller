@@ -3,7 +3,7 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 ## Play online
 
-[Open VincentsVibeRoller](https://rollparty-dnd.vdn1561.chatgpt.site), enter a name, choose an icon (sets your dice color), and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
+[Open VincentsVibeRoller](https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev), enter a name, choose an icon (sets your dice color), and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
 
 - Numbered 3D d4, d6, d8, d10, d12, d20 and percentile dice.
 - Mixed dice pools and modifiers: `2d6+1d4+3`.
@@ -58,8 +58,8 @@ If your Wrangler resolves relative paths against its configuration directory, us
 - `node --experimental-strip-types --test tests/dice.test.ts tests/geometry.test.ts tests/physics.test.ts tests/interaction.test.ts tests/notebook.test.ts`: dice rules and face geometry.
 - `node tests/session.mjs`: integration test against the running local server. Creates an isolated test room, verifies two players observe identical results, retry deduplication, profile persistence, and access isolation.
 
-Stack: React, Vinext, Three.js, Cloudflare Workers and D1. The logical Sites binding is in `.openai/hosting.json`; schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
+Stack: React, Vinext, Three.js, Cloudflare Workers and D1. `.openai/hosting.json` only configures the local-dev D1 binding (`pnpm dev`/`pnpm build`/`pnpm start`); it has no effect on the deployed site above, which runs on Cloudflare via `wrangler.deploy.toml`. Schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
 
-To deploy this to your own Cloudflare account and a custom domain instead of the OpenAI-hosted site above, see [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md).
+To deploy your own copy to a different Cloudflare account/domain, see [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md).
 
 The optional WebMCP `roll_dice` tool is registered only after joining a room, feature-detected, and uses the same validated action as the UI.

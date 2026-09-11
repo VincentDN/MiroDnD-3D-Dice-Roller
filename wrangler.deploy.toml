@@ -13,7 +13,7 @@
 # otherwise independent of `.openai/hosting.json`, which only configures
 # OpenAI's own "Sites" hosting control plane used locally.
 
-name = "vincentsviberoller"
+name = "mirodnd-3d-dice-roller"
 main = "dist/server/index.js"
 compatibility_date = "2026-05-15"
 compatibility_flags = ["nodejs_compat"]

@@ -55,8 +55,10 @@ shared memory between agents or sessions.
   binary mute via `setSoundEnabled`).
 - `desktop/` is a **separate** Electron app (own `package.json`, not part of
   the pnpm workspace) that remote-loads the deployed web app
-  (`desktop/config.cjs` → `SITE_ORIGIN`, currently hardcoded to
-  `https://rollparty-dnd.vdn1561.chatgpt.site`). It has three trust tiers:
+  (`desktop/config.cjs` → `SITE_ORIGIN`, currently hardcoded to the live
+  Cloudflare deployment, `https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev` -
+  this used to point at an OpenAI Sites-hosted domain; that's no longer
+  used, see docs/cloudflare-deploy.md). It has three trust tiers:
   - `desktop/controls.html` + `controls.js` + `preload.cjs`: the **local,
     trusted** control panel. Only this context gets a `contextBridge` API
     (`window.rollparty`) and only after `ipcMain.handle` validates the
@@ -147,6 +149,12 @@ stays unsigned (no code-signing cert available) — keep the README's existing
 
 ## Workstream 3 — Cloudflare Pages deploy path
 
+_Done as of 2026-09-11 — the live site now runs on Cloudflare
+(`https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev`), OpenAI Sites
+is no longer used for production, and `desktop/config.cjs`'s `SITE_ORIGIN`
+points there by default. Left below verbatim as the original plan/rationale;
+see the Status section above for the current state._
+
 Currently the app is wired to OpenAI's "Sites" hosting control plane
 (`.openai/hosting.json`, `project_id`) and the desktop app hardcodes
 `SITE_ORIGIN = 'https://rollparty-dnd.vdn1561.chatgpt.site'` in
@@ -178,6 +186,40 @@ Pages project under their own dev domain, independent of that platform.
 ## Status
 
 _Update this section on every handoff. Newest entry at the top._
+
+- **2026-09-11 (Claude, third session):** Two things happened:
+  1. Merged everything from the feature branch into `main` and pushed. Added
+     `.github/workflows/build-desktop.yml`: a windows-latest CI job that
+     builds the NSIS installer and publishes it to a GitHub Release
+     (`desktop-v<version>`, currently 0.6.0) on every push to `main` that
+     touches `desktop/`. Verified the release + `.exe` actually exist
+     (112MB, correct name) via the GitHub API after the run completed.
+  2. **Important finding**: the user reported the dice-physics restart bug
+     ("still present in 0.6.0") even after the fix above was merged. Root
+     cause turned out to be a **deployment gap, not a code bug**: the
+     desktop app doesn't bundle the web code - it's a thin Electron shell
+     that loads the *live hosted site* (`desktop/config.cjs`'s
+     `SITE_ORIGIN`). That was still pointed at the old OpenAI Sites-hosted
+     domain, and merging to `main` on GitHub never redeploys that (it's a
+     separate, manual "web publication" step on OpenAI's platform that this
+     repo has no automation for - see an earlier PR description in this
+     repo's own history: "Requires the matching web publication..."). So
+     "testing the browser" and "testing the .exe" were both exercising
+     stale, pre-fix code the whole time, regardless of what was merged here.
+     The user has since deployed their own copy to Cloudflare
+     (`https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev`, via the
+     `pnpm run deploy` path from Workstream 3) and asked to make that the
+     app's native default, replacing OpenAI Sites entirely. Updated:
+     `desktop/config.cjs` (`SITE_ORIGIN`), `wrangler.deploy.toml` (`name`),
+     `README.md`, `docs/cloudflare-deploy.md`, and the desktop tests that
+     referenced the old domain.
+  - **Open item for whoever picks this up next**: the physics "dice reset
+    mid-air and re-roll" bug needs to be **re-verified against this new
+    live deployment** (which now actually contains the `roll?.id`-keying
+    fix from the previous session) before concluding whether it's actually
+    fixed or whether a second mechanism is still at play. Don't assume it's
+    fixed just because the fix is merged - confirm against whatever site
+    `desktop/config.cjs`'s `SITE_ORIGIN` currently points at, live, first.
 
 - **2026-09-11 (Claude, follow-up session):** The original three workstreams
   below are done and merged into this branch's history. This session did
