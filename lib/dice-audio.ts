@@ -14,18 +14,25 @@ export class ResultSounds {
 }
 const results = new ResultSounds();
 let context: AudioContext | undefined, output: GainNode | undefined;
-let enabled = true, lastImpact = -Infinity;
+let enabled = true, volume = .7, lastImpact = -Infinity;
 const voices = new Set<AudioScheduledSourceNode>();
+function applyGain() {
+  if (output && context) output.gain.setValueAtTime(enabled ? volume : 0, context.currentTime);
+}
 export function setSoundEnabled(value: boolean) {
   enabled = value;
-  if (output && context) output.gain.setValueAtTime(value ? .5 : 0, context.currentTime);
+  applyGain();
   if (!value) { for (const voice of voices) { try { voice.stop(); } catch {} } voices.clear(); }
+}
+export function setVolume(value: number) {
+  volume = Math.min(1, Math.max(0, value));
+  applyGain();
 }
 export function unlockSound() {
   if (!enabled || typeof window === 'undefined') return;
   try {
     context ??= new AudioContext();
-    if (!output) { output = context.createGain(); output.gain.value=.5; output.connect(context.destination); }
+    if (!output) { output = context.createGain(); output.gain.value=volume; output.connect(context.destination); }
     if (context.state === 'suspended') void context.resume().catch(()=>{});
   } catch { /* Audio is optional: unavailable devices never interrupt a roll. */ }
 }
@@ -63,15 +70,28 @@ export function diceImpact(speed: number) {
   noise.connect(filter);filter.connect(gain);gain.connect(output!);track(noise,[filter,gain]);noise.start(now);
   tone(150+Math.random()*90,now,.11,Math.min(.19,speed*.018));
 }
+function playPing(now: number) {
+  tone(523.25,now,.32,.13);tone(659.25,now+.075,.36,.09);
+}
+function playFanfare(now: number) {
+  // Original synthesized brass fanfare; no external recordings or network requests.
+  for(const [i,f] of [261.63,329.63,392,523.25].entries()) {
+    const at=now+i*.14, length=i===3?.6:.21;
+    tone(f,at,length,.13,true);tone(f*.997,at+.004,length,.07,true);
+  }
+}
 export function confirmedSound(roll: Roll, fresh: boolean) {
   // Claim before checking playback, so a blocked/muted historical cue is never replayed later.
   if (!results.claim(roll.id,fresh) || !ready()) return;
   const now=context!.currentTime+.015;
-  if(resultCue(roll)==='trumpet') {
-    // Original synthesized brass fanfare; no external recordings or network requests.
-    for(const [i,f] of [261.63,329.63,392,523.25].entries()) {
-      const at=now+i*.14, length=i===3?.6:.21;
-      tone(f,at,length,.13,true);tone(f*.997,at+.004,length,.07,true);
-    }
-  } else { tone(523.25,now,.32,.13);tone(659.25,now+.075,.36,.09); }
+  if(resultCue(roll)==='trumpet') playFanfare(now); else playPing(now);
+}
+// Lets a Settings panel preview the current volume without waiting for a real roll.
+export async function testSound() {
+  unlockSound();
+  if (!context) return;
+  // A fresh AudioContext (or one suspended by autoplay policy) resumes asynchronously.
+  if (context.state === 'suspended') { try { await context.resume(); } catch { return; } }
+  if (!ready()) return;
+  playPing(context.currentTime+.015);
 }
