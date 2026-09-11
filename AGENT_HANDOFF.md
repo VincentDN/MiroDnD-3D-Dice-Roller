@@ -179,6 +179,48 @@ Pages project under their own dev domain, independent of that platform.
 
 _Update this section on every handoff. Newest entry at the top._
 
-- **2026-09-11 (Claude, session opening this file):** Wrote this plan.
-  Starting Workstream 1 (settings module + audio volume) next. Nothing else
-  implemented yet.
+- **2026-09-11 (Claude):** All three workstreams implemented and pushed to
+  this branch. Summary of what landed (see commit log for exact diffs):
+  - **Workstream 1 (settings)**: `lib/settings.ts` (persisted
+    theme+volume), `lib/dice-audio.ts` gained `setVolume()`/`testSound()`,
+    `components/settings-panel.tsx` (gear button next to the mute toggle,
+    both in the header and the desktop overlay), three themes wired via
+    `[data-theme]` on `<html>` with semantic CSS custom properties in
+    `app/globals.css` (default/drakkenheim/miro-light) and a flash-prevention
+    inline script in `app/layout.tsx`. Desktop roll-notebook save folder:
+    `desktop/main.cjs` (settings.json under userData, IPC handlers,
+    `will-download` silent-save), `desktop/preload.cjs`, `desktop/controls
+    .html`/`.js`. Verified in a real browser via Playwright (all 3 themes,
+    mobile width, no console errors) and `node --test` (17/17 root, 4/4
+    desktop at that point).
+  - **Workstream 2 (installer)**: `desktop/package.json` `build` config +
+    `electron-builder` devDependency + `package:installer` script (NSIS,
+    assisted install, no admin rights, publish disabled). **Verified
+    end-to-end**: actually built a real ~112MB NSIS installer .exe in this
+    sandbox (had to `apt-get install wine64 wine32:i386` and symlink
+    `/usr/bin/wine` to the 32-bit binary, since electron-builder's NSIS step
+    needs to run a 32-bit Windows tool even for an unsigned build - that
+    tooling is sandbox-local, not part of any commit; a real Windows machine
+    or `windows-latest` CI runner needs none of it).
+  - **Workstream 3 (Cloudflare)**: `wrangler.deploy.toml` (deliberately not
+    `wrangler.toml` - see the comment at its top and
+    `docs/cloudflare-deploy.md` for why: the plain filename collides with
+    `@cloudflare/vite-plugin`'s auto-loaded base config and breaks local
+    dev), `pnpm run deploy`, `pnpm run cf:d1:create`/`cf:d1:migrate`,
+    `docs/cloudflare-deploy.md` (full walkthrough + the Workers-vs-Pages
+    reasoning, sourced from Cloudflare's current docs via WebSearch, not
+    assumed), `desktop/scripts/set-site-origin.cjs` (bakes a custom
+    `SITE_ORIGIN` into the desktop build via `ROLLPARTY_SITE_ORIGIN` env
+    var, no-op by default). Verified: `wrangler deploy --dry-run` resolves
+    correctly against the new config, and confirmed local dev
+    (`pnpm build && pnpm start`) still works after the rename fix.
+  - **Not done / left for the user or a future agent**: nobody has actually
+    run the Cloudflare deploy for real (needs the user's own Cloudflare
+    account/credentials - out of scope for an agent to do unattended). The
+    NSIS installer's *native* Windows behavior (install/uninstall/shortcuts)
+    is unverified beyond "electron-builder produced a well-formed PE32 NSIS
+    executable" - same caveat the existing `package:win` flow already
+    carries per `desktop/README.md`'s Windows acceptance check section.
+  - All tests green at hand-off: `node --test tests/*.test.ts` in the repo
+    root (17/17) and `node --test tests/*.test.cjs` in `desktop/` (7/7).
+    `pnpm run build` and `npx tsc --noEmit` both clean.
