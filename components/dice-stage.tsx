@@ -123,13 +123,28 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     const notify = () => {
       if (roll && !notified) { notified=true; settledCallback.current?.(roll.id); confirmedSound(roll,fresh); }
     };
+    // The client's own replay is cosmetic; the server's recorded poses are
+    // authoritative and always win. Any drift between them (even a few
+    // frames of client/server floating-point difference over a long tumble)
+    // used to show as a hard teleport right when the dice "settle" - blend
+    // into the authoritative pose over a few frames instead so a correction,
+    // if any, reads as a soft settle rather than a reset-and-reroll.
+    let correcting = false, correctStart = 0, correctFrom: { p: T.Vector3; q: T.Quaternion }[] = [];
+    const CORRECT_MS = 180;
     const finish = () => {
-      if (roll?.physics) table.bodies.forEach((body,i) => {
-        const pose = roll.physics!.poses[i];
-        body.position.set(pose.p[0],pose.p[1],pose.p[2]);
-        body.quaternion.set(pose.q[0],pose.q[1],pose.q[2],pose.q[3]);
-        body.velocity.setZero(); body.angularVelocity.setZero(); body.sleep();
-      });
+      if (roll?.physics) {
+        correctFrom = table.bodies.map((b) => ({
+          p: new T.Vector3(b.position.x, b.position.y, b.position.z),
+          q: new T.Quaternion(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w),
+        }));
+        correcting = true; correctStart = performance.now();
+        table.bodies.forEach((body,i) => {
+          const pose = roll.physics!.poses[i];
+          body.position.set(pose.p[0],pose.p[1],pose.p[2]);
+          body.quaternion.set(pose.q[0],pose.q[1],pose.q[2],pose.q[3]);
+          body.velocity.setZero(); body.angularVelocity.setZero(); body.sleep();
+        });
+      }
       replay = false;
       notify();
     };
@@ -213,7 +228,16 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
         if (replay && ++step >= roll!.physics!.steps) finish();
         accumulator-=STEP;
       }
-      table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
+      if (correcting) {
+        const t = Math.min(1, (now - correctStart) / CORRECT_MS);
+        table.bodies.forEach((b,i) => {
+          groups[i].position.lerpVectors(correctFrom[i].p, new T.Vector3(b.position.x,b.position.y,b.position.z), t);
+          groups[i].quaternion.slerpQuaternions(correctFrom[i].q, new T.Quaternion(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w), t);
+        });
+        if (t >= 1) correcting = false;
+      } else {
+        table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
+      }
       el.style.cursor=(replay)?'progress':constraint?'grabbing':interactive?'grab':'default';
       renderer.render(scene,camera); frame=requestAnimationFrame(animate);
     };
