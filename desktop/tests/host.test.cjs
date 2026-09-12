@@ -22,7 +22,7 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
       Object.assign(this.webContents, {
         send() {}, setAudioMuted(value) { this.muted=value; }, setWindowOpenHandler(fn) { this.popups = fn; },
         getURL: () => this.url,
-        insertCSS: async () => 'css', removeInsertedCSS: async () => {},
+        insertCSS: async (css) => { this.webContents.lastCSS = css; return 'css'; }, removeInsertedCSS: async () => {},
       });
       windows.push(this);
     }
@@ -63,7 +63,7 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   const directory = path.resolve(__dirname, '..');
   vm.runInNewContext(fs.readFileSync(path.join(directory, 'main.cjs'), 'utf8'), {
     require: (id) => id === 'electron' ? electron : id === './config.cjs' ? config : require(id),
-    __dirname: directory,
+    __dirname: directory, process: { env: {}, argv: [] },
   });
   await new Promise(setImmediate);
   const [panel, overlay, room] = windows;
@@ -130,6 +130,9 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   assert.equal(overlay.bounds.width, 600);
   assert.equal(overlay.bounds.height, 500);
   assert(overlay.bounds.y + overlay.bounds.height <= 1040);
+  await call('history', false);
+  assert.match(overlay.webContents.lastCSS, /overlay-taskbar/);
+  await call('history', true);
   call('visible', false);
   assert.equal(overlay.visible, false);
   call('visible', true);

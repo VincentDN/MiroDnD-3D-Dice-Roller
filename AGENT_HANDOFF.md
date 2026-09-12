@@ -1,3 +1,39 @@
+# Current handoff - portable EXE and Cloudflare delivery (2026-09-12)
+
+This section supersedes the historical installer/feature-branch instructions below.
+
+- Active work: `portable-cloudflare-delivery`, based on latest main `0bb9d5d`.
+- Desktop v0.7.0 is a single Windows x64 **portable EXE**, built with
+  `cd desktop && npm run package:portable`. No installer target remains.
+  It loads the same Cloudflare app as browsers; internet is required.
+- `.github/workflows/build-desktop.yml` validates every PR/update (web unit tests,
+  typecheck, production Worker build, isolated local D1 integration, browser and
+  desktop-overlay tests; Windows portable build plus actual EXE launch check).
+  Every main push releases the tested EXE and deploys the tested web assets.
+  Production runs serialize; PRs cannot publish or access Cloudflare secrets.
+- Production setup: repository Actions secrets `CLOUDFLARE_API_TOKEN` and
+  `CLOUDFLARE_ACCOUNT_ID`. Optional variable `CLOUDFLARE_DATABASE_ID`, otherwise
+  discovered from the existing live Worker's DB binding. Never recreate D1.
+  `scripts/cloudflare.mjs` writes ignored `wrangler.runtime.toml` and refuses
+  unresolved/all-zero database IDs. See `docs/cloudflare-deploy.md`.
+- Hosting remains **Cloudflare only**. `pnpm run deploy` now builds, resolves DB,
+  migrates and deploys. OpenAI Sites plugin and hosting-config build dependency
+  removed; local D1 is declared directly in `vite.config.ts`.
+- Shared UI: roll-history views extracted, settings synchronize across open
+  windows, desktop grid reserves space for controls/presets, native stylesheet
+  handles transparency only, history toggle targets current roll taskbar.
+- Portable custom-origin builds modify only packaged files, not tracked source.
+- Local checks: 21 web unit tests and 7 desktop tests pass; typecheck and
+  Worker build pass. Local D1 migrations pass. Sandbox network-interface access
+  prevents launching Wrangler dev; Chromium download is blocked, so full
+  browser/native EXE verification runs on GitHub CI. Cloudflare credentials
+  are not available in the agent session; production automation needs the
+  repository secrets described above.
+
+---
+
+## Historical context (superseded where the current handoff differs)
+
 # Agent handoff plan — Settings, Installer, Cloudflare Pages
 
 This file is the shared state for AI coding agents (Claude, ChatGPT/Codex, or

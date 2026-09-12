@@ -1,17 +1,7 @@
-# Deploys the built app (run `pnpm run build` first) as a Cloudflare Worker
-# with static assets - Cloudflare's current recommended platform for a
-# full-stack app like this one (a static frontend plus /api/session, backed
-# by D1), rather than the legacy Pages product. See
-# docs/cloudflare-deploy.md for the full walkthrough, including why this
-# uses `wrangler deploy` and not `wrangler pages deploy`.
-#
-# Deliberately NOT named wrangler.toml: @cloudflare/vite-plugin (used by
-# `pnpm dev`/`pnpm build`/`pnpm start`) auto-loads a root wrangler.toml/json
-# as a base and merges vite.config.ts's own D1 binding on top of it, which
-# duplicates the "DB" binding and breaks local dev. `pnpm run deploy` passes
-# --config to point wrangler at this file explicitly instead. This file is
-# otherwise independent of `.openai/hosting.json`, which only configures
-# OpenAI's own "Sites" hosting control plane used locally.
+# Production template. scripts/cloudflare.mjs resolves the existing DB binding
+# into ignored wrangler.runtime.toml; CI applies migrations and deploys that file.
+# Keep this filename: wrangler.toml auto-discovery conflicts with local Vite D1.
+# See docs/cloudflare-deploy.md. Cloudflare Workers is the sole hosting target.
 
 name = "mirodnd-3d-dice-roller"
 main = "dist/server/index.js"
@@ -24,8 +14,7 @@ directory = "dist/client"
 [[d1_databases]]
 binding = "DB"
 database_name = "vincentsviberoller"
-# Placeholder - replace with the id `pnpm run cf:d1:create` prints, or this
-# deploy will fail (or point at nothing) once running for real.
+# Local-test placeholder. The deployment script requires a real existing DB ID.
 database_id = "00000000-0000-0000-0000-000000000000"
 # Points `wrangler d1 migrations apply` (run via `pnpm run cf:d1:migrate`) at
 # drizzle-kit's output folder instead of the wrangler default ("migrations").

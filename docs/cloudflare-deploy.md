@@ -1,111 +1,68 @@
-# Deploying to your own Cloudflare account
+# Browser and Windows delivery
 
-The live site (linked from the root README, and what `desktop/config.cjs`'s
-`SITE_ORIGIN` points at by default) runs on Cloudflare Workers, deployed via
-`wrangler.deploy.toml` in this repo - it is no longer hosted through OpenAI's
-"Sites" control plane (`.openai/hosting.json` now only configures the
-*local-dev* D1 binding; see the last section below). This doc covers
-deploying your own separate copy - a fork, a staging environment, or just a
-personal instance - to a Cloudflare account and domain of your choosing.
+Production: https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev
 
-## Why Workers, not "Pages"
+The React/Vinext frontend and `/api/session` backend run together on **Cloudflare Workers with static assets and D1**. The browser loads that app directly. The portable Windows executable adds the transparent overlay, tray controls and notebook folder picker around the same hosted app. Both require an internet connection. Shared room results remain server-authoritative.
 
-The app isn't a static site - `app/api/session/route.ts` is a real server
-endpoint backed by a Cloudflare D1 database (room/player/roll state), so
-whatever hosts it needs to run that server code, not just serve files.
-Cloudflare's own current guidance is to use **Workers with static assets**
-for exactly this shape of app (a static frontend plus some dynamic routes,
-backed by D1) rather than the older, separate Pages product - Pages still
-works and isn't going away, but Cloudflare has said new investment and
-features go to Workers. `pnpm run build` already produces a
-Workers-with-assets build (see `dist/server/wrangler.json` after building:
-it has a `main` worker script, an `assets` directory, and a `d1_databases`
-binding - the same shape this repo's own `wrangler.deploy.toml` uses), so this is
-also the least-friction path: no build-output restructuring needed.
+## Automatic delivery
 
-If you specifically want the Pages *product* (e.g. for its git-push preview
-deployments in the dashboard), the Advanced Mode docs are here:
-https://developers.cloudflare.com/pages/functions/advanced-mode/ - you'd
-copy `dist/server/index.js` into `dist/client/_worker.js` after building and
-run `wrangler pages deploy dist/client` instead of the steps below. That
-path isn't set up in this repo because Workers-with-assets is simpler and is
-what Cloudflare recommends for this app's shape.
+`.github/workflows/build-desktop.yml` runs for **every PR update** and **every push to main**, without path filters:
 
-## One-time setup
+1. Test dice rules, physics, settings and deployment config; typecheck and build the Worker.
+2. Migrate an isolated local D1 database and test multiplayer APIs plus actual browser/desktop-overlay rendering.
+3. Build a single Windows x64 portable EXE on Windows, launch that actual executable to verify its packaged controls load, and upload it with a SHA-256 checksum.
+4. On main only, publish a unique GitHub Release from those tested artifacts, migrate the existing production database, deploy the tested web artifact and check the live lobby/API.
 
-```sh
-pnpm install
-wrangler login          # opens a browser to authorize this CLI against your Cloudflare account
-pnpm run cf:d1:create   # creates a D1 database named "vincentsviberoller"
-```
+A PR has a downloadable `VincentsVibeRoller-Windows` workflow artifact. GitHub wraps artifacts in a ZIP; extract it once and run the EXE. It connects to production; the PR's web code is tested against isolated local D1. PR code never receives production credentials. **Merging the PR publishes the executable and updates the live site automatically.** Unmerged PRs do not replace production. Manual workflow runs publish only when run on main.
 
-`cf:d1:create` prints a `database_id`. Put it in `wrangler.deploy.toml` at the repo
-root, replacing the `00000000-...` placeholder under `[[d1_databases]]`.
+The stable download is:
+https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/releases/latest/download/VincentsVibeRoller.exe
 
-Apply the schema to that new (empty) database:
+Each release tag includes the workflow run number, so web-only merges also produce a traceable fresh EXE. Re-running the same workflow replaces only that run's assets. Production runs are serialized; a newer merge cannot cancel an in-progress migration/deploy.
+
+## One-time GitHub configuration
+
+In the repository, **Settings → Secrets and variables → Actions**, add:
+
+| Type | Name | Value |
+| --- | --- | --- |
+| Secret | `CLOUDFLARE_API_TOKEN` | Cloudflare API token restricted to the production account, with Workers Scripts Edit and D1 Edit permissions |
+| Secret | `CLOUDFLARE_ACCOUNT_ID` | Production Cloudflare account ID |
+| Variable, optional | `CLOUDFLARE_DATABASE_ID` | Existing production D1 database UUID |
+
+When the database variable is absent, the deploy script reads the existing Worker's `DB` binding through the Cloudflare API. It fails clearly if that binding cannot be resolved. It **never creates or replaces a production database**. The generated `wrangler.runtime.toml` is ignored by Git. The all-zero ID in `wrangler.deploy.toml` is a template, not a deployable production ID.
+
+The workflow requests `contents: write` only for its release job. It needs Actions enabled. For enforced merge checks, select **Browser and Worker** and **Portable Windows EXE** in the repository's branch rules. If Cloudflare Workers Builds is also connected to this repo, disable its production auto-deploy to avoid two independent pipelines racing.
+
+Cloudflare credentials must be configured before the first successful automatic web deployment. Missing credentials fail the deploy job with a precise message; they are never silently skipped. The verified EXE release can already exist if the subsequent Cloudflare step fails. Fix the configuration and rerun failed jobs.
+
+## Local development and tests
+
+Node 24+, pnpm 11.19.0:
 
 ```sh
-pnpm run cf:d1:migrate
+pnpm install --frozen-lockfile
+pnpm test
+pnpm run typecheck
+pnpm run build
+pnpm exec playwright install chromium
+node scripts/test-integration.mjs --browser
 ```
 
-That's `wrangler d1 migrations apply`, which tracks what's already applied in
-a `d1_migrations` bookkeeping table it creates on your database, so it's
-safe to re-run any time - it only applies whatever's new in `drizzle/`
-(currently the rooms/players/rolls tables, plus the `avatar` column added
-since). After a schema change (`db/schema.ts` + `pnpm run db:generate`),
-just re-run `pnpm run cf:d1:migrate`.
+The integration runner creates a temporary local database, applies every migration, starts the built Worker, tests the session API and browser modes, then stops the Worker. It never uses remote D1.
 
-## Build and deploy
+For interactive development, run `pnpm dev`. Local bindings are defined in `vite.config.ts`; apply migrations to its local database as documented in the root README. OpenAI Sites is no longer a build dependency or deployment target.
+
+## Manual production deployment
+
+Set the account/API-token variables above in your shell, then:
 
 ```sh
 pnpm run deploy
 ```
 
-This runs `vinext build` then `wrangler deploy --config wrangler.deploy.toml`.
-It's not named plain `wrangler.toml` on purpose: the local dev build
-(`pnpm dev`/`pnpm build`/`pnpm start`, via `@cloudflare/vite-plugin` in
-`vite.config.ts`) auto-loads a root `wrangler.toml` as a base config and
-would merge its own D1 binding on top, duplicating the `DB` binding and
-breaking local dev - so the deploy config lives under a different filename
-and is only used when explicitly passed with `--config`. Wrangler prints a
-`*.workers.dev` URL when it finishes - open it to confirm the lobby loads
-and you can create a room.
+This builds, resolves the existing production database, applies outstanding migrations and deploys. With an interactive `wrangler login` instead of an API token, provide `CLOUDFLARE_DATABASE_ID` explicitly. `pnpm run cf:d1:migrate` applies only the schema. `pnpm run deploy:built` deploys an already-tested `dist/` artifact, as CI does.
 
-## Attaching your dev domain
+The config deliberately uses `wrangler.deploy.toml` rather than `wrangler.toml`, avoiding auto-discovery conflicts with the Vite Cloudflare plugin's local DB binding. Do not deploy through OpenAI Sites.
 
-You need the domain (or a subdomain of one) added to your Cloudflare
-account first (Cloudflare dashboard → **Add a domain**, or use a subdomain
-of a zone you already manage there). Then either:
-
-- **Dashboard**: Workers & Pages → your worker (`mirodnd-3d-dice-roller`, or
-  whatever you named it in `wrangler.deploy.toml`) →
-  **Settings → Domains & Routes → Add → Custom domain**, or
-- **wrangler.deploy.toml**: uncomment the `[[routes]]` block at the bottom of the
-  file, set `pattern` to your domain, and re-run `pnpm run deploy`.
-
-Either way, Cloudflare provisions the certificate automatically - no manual
-DNS/TLS steps beyond having the domain on your account.
-
-## Pointing the desktop app at your own copy instead
-
-`desktop/config.cjs` hardcodes `SITE_ORIGIN` to the project's live Cloudflare
-deployment by default. Building the desktop app against your own separate
-deployment instead:
-
-```sh
-cd desktop
-ROLLPARTY_SITE_ORIGIN=https://your-domain.example npm run package:installer
-```
-
-`scripts/set-site-origin.cjs` rewrites `config.cjs`'s `SITE_ORIGIN` constant
-before packaging when that env var is set (no-op, so the default build is
-unaffected, if you leave it unset). It edits `desktop/config.cjs` on disk;
-`git checkout desktop/config.cjs` afterwards if you don't want to commit
-that change, or commit it if this *is* meant to become the project's new
-permanent default.
-
-## Local development against your own database
-
-`pnpm run dev` / `pnpm run start` still use `.openai/hosting.json` and a
-local D1 binding for development regardless of this doc - that's unrelated
-to the deploy path above and doesn't need to change for local work.
+For another Cloudflare deployment, change the Worker name and provide its existing database ID. Package a matching portable EXE with `ROLLPARTY_SITE_ORIGIN=https://your-worker.example npm run package:portable` inside `desktop/`. The override affects the packaged copy only; tracked source is unchanged.
