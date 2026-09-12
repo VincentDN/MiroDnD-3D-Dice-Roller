@@ -147,7 +147,7 @@ export async function POST(req: Request) {
         if (!source) throw Error('This roll is no longer available.');
         const parent=JSON.parse(source.data);
         outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1), parent:b.parent };
-      } else outcome=evaluatePhysical(b.expression,b.diceScale === 2 ? 2 : 1);
+      } else outcome=evaluatePhysical(b.expression,[2,3].includes(b.diceScale) ? b.diceScale : 1);
       const roll = {
         id: b.id,
         playerId: player.id,

@@ -10,9 +10,10 @@ export type Avatar = {
 // they replace the icon-badge fallback automatically - no code change needed.
 // Server-safe: no UI imports here (this is also used by app/api/session/route.ts).
 export const AVATARS: Avatar[] = [
-  { id: 'arcane-scion', name: 'Arcane Scion', file: '/avatars/arcane-scion.png', color: '#3fb6e0' },
-  { id: 'ringmaster', name: 'Ringmaster', file: '/avatars/ringmaster.png', color: '#d23b3b' },
-  { id: 'warborn', name: 'Warborn', file: '/avatars/warborn.png', color: '#e8ac3a' },
+  { id: 'star-gods-hunger', name: "The Star God's Hunger", file: '/avatars/star-gods-hunger.png', color: '#c44dff' },
+  { id: 'teddy', name: 'Teddy', file: '/avatars/teddy.png', color: '#d23b3b' },
+  { id: 'saravi', name: 'Saravi', file: '/avatars/saravi.png', color: '#3fb6e0' },
+  { id: 'tom-varn', name: 'Tom Varn', file: '/avatars/tom-varn.png', color: '#3fae5c' },
 ];
 
 export const DEFAULT_AVATAR_ID = AVATARS[0].id;

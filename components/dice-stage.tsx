@@ -113,7 +113,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     scene.add(light);
     const floor = new T.Mesh(new T.PlaneGeometry(100,100), new T.ShadowMaterial({opacity:.22}));
     floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
-    const diceScale = (roll?.physics?.diceScale ?? (roll ? 1 : sizeMultiplier > 1 ? 2 : 1));
+    const diceScale = (roll?.physics?.diceScale ?? (roll ? 1 : sizeMultiplier > 1 ? sizeMultiplier : 1));
     const logical = roll?.dice || [{sides:20,value:20,kept:true}];
     const dice = logical.flatMap(d => d.sides === 100 ? [{...d,sides:10,tens:true},{...d,sides:10,units:true}] : [d]);
     const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release, diceScale);

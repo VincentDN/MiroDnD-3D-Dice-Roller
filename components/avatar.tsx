@@ -1,14 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { Crown, Swords, Wand2, type LucideIcon } from 'lucide-react';
+import { Crown, Sparkles, Swords, Wand2, type LucideIcon } from 'lucide-react';
 import { AVATARS, type Avatar } from '@/lib/avatars';
 
 // Icon shown if the portrait file at avatar.file is missing/fails to load -
 // see lib/avatars.ts for how to add the real art without touching this file.
 const FALLBACK_ICONS: Record<string, LucideIcon> = {
-  'arcane-scion': Wand2,
-  ringmaster: Crown,
-  warborn: Swords,
+  'star-gods-hunger': Sparkles,
+  teddy: Crown,
+  saravi: Wand2,
+  'tom-varn': Swords,
 };
 
 export function AvatarImage({ avatar, size = 32 }: { avatar: Avatar; size?: number }) {

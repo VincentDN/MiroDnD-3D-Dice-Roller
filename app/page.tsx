@@ -272,7 +272,7 @@ export default function Home() {
           retry.current.label !== rollLabel
         )
           retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel };
-        const data = await api({ action: 'roll', ...retry.current, diceScale: desktop ? 2 : 1 });
+        const data = await api({ action: 'roll', ...retry.current, diceScale: desktop ? 2 : 3 });
         retry.current = null;
         ingest([data]);
         return { id: data.id, total: data.total, dice: data.dice };
@@ -618,9 +618,8 @@ export default function Home() {
                 <div className="tray">
                   <div className="tray-label">
                     <span className="live-dot" /> SHARED DICE TRAY
-                    <span>3D · LIVE ROLLS</span>
                   </div>
-                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
+                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} sizeMultiplier={3} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
                   <div className="tray-result">
                     {active ? (
                       <>

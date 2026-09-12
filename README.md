@@ -24,7 +24,7 @@ The native Windows host is in [`desktop/`](desktop/README.md). It opens a transp
 
 ## Icons and dice color
 
-Instead of picking a raw color, each player picks an icon (Arcane Scion, Ringmaster, Warborn) and their dice color follows from that automatically - the server derives the color from the chosen icon, so it can't drift out of sync. Portrait art lives in `public/avatars/` (`arcane-scion.png`, `ringmaster.png`, `warborn.png`, defined in `lib/avatars.ts`); until those files are added, each icon shows as a colored badge with a themed glyph instead - dropping in the real files at those exact paths upgrades the look with no code changes. Add a fourth icon by adding one entry to `AVATARS` in `lib/avatars.ts` plus its image file.
+Instead of picking a raw color, each player picks an icon (The Star God's Hunger, Teddy, Saravi, Tom Varn) and their dice color follows from that automatically - the server derives the color from the chosen icon, so it can't drift out of sync. Portrait art lives in `public/avatars/` (`star-gods-hunger.png`, `teddy.png`, `saravi.png`, `tom-varn.png`, defined in `lib/avatars.ts`); until those files are added, each icon shows as a colored badge with a themed glyph instead - dropping in the real files at those exact paths upgrades the look with no code changes. Add another icon by adding one entry to `AVATARS` in `lib/avatars.ts` plus its image file.
 
 ## Personal roll notebook
 
