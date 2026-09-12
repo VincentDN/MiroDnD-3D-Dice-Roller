@@ -106,6 +106,14 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   assert.equal(checkDownload('https://evil.test/file', 'text/markdown', notebookName).prevented, true);
   assert.equal(checkDownload(notebookURL, 'text/markdown', 'program.exe').prevented, true);
   assert.equal(checkDownload(notebookURL, 'text/markdown', notebookName, {getURL: () => 'https://evil.test/'}).prevented, true);
+  const actionName = 'VincentsVibeRoller-actions.json';
+  const actionExport = checkDownload(notebookURL, 'application/json', actionName, overlay.webContents);
+  assert.equal(actionExport.prevented, false);
+  assert.deepEqual(Array.from(actionExport.dialog.filters[0].extensions), ['json']);
+  assert.equal(checkDownload(notebookURL, 'text/markdown', actionName).prevented, true);
+  assert.equal(checkDownload(notebookURL, 'application/json', 'arbitrary.json').prevented, true);
+  assert.equal(checkDownload('blob:https://evil.test/export', 'application/json', actionName).prevented, true);
+  assert.equal(checkDownload(notebookURL, 'application/json', actionName, {getURL: () => 'https://evil.test/'}).prevented, true);
   // A configured roll-notebook save folder persists to disk and saves silently, no dialog.
   assert.equal(call('state').savePath, '');
   const chosenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rollparty-notebooks-'));
@@ -120,6 +128,7 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   }, room.webContents);
   assert.equal(savedTo, path.join(chosenDir, notebookName));
   assert.equal(promptedDialog, false);
+  assert.equal(checkDownload(notebookURL, 'application/json', actionName).dialog.title, 'Export characters');
   // Canceling the folder picker leaves the existing choice untouched.
   dialogResult = { canceled: true, filePaths: [] };
   assert.equal(await call('choose-save-path'), chosenDir);

@@ -1,3 +1,13 @@
+# Current handoff - character action bars (2026-09-12)
+
+- User requested a task roadmap and implementation. See `LLM-Docs/PLAY-ROADMAP.md` for the seven ordered phases and acceptance criteria. First increment: character action bars on `feature/character-action-bars`, based on `24dd5c4`.
+- Shared component now serves the browser room and interactive desktop overlay. Supports profiles, editing, ordering, reminders, removal undo, confirmed profile deletion, import/export and same-origin window synchronization.
+- New `rollparty:actions:v1` data is strictly validated. Existing `rollparty:presets:v1` data migrates once and is retained as a backup. Export contains action profiles only. Imports append with fresh IDs. Room identity and backend are unchanged. Desktop download handling permits only the exact character JSON filename/MIME from same-origin blobs, with a save dialog; the notebook folder behavior is preserved.
+- Local validation: 27 unit tests and production build passed; browser integration cannot start locally because Wrangler hits `uv_interface_addresses` in this runtime. CI must execute the new browser acceptance test and the portable EXE gates before completion is claimed.
+- This is the first feature increment; attack/damage links and temporary effects remain next in the roadmap. Cloudflare production has not been updated by this branch.
+
+---
+
 # Current handoff — feature briefing (2026-09-12)
 
 - Delivered to `main` at `c11565d`, based on `82c19f5`.

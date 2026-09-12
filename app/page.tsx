@@ -16,7 +16,6 @@ import {
   Maximize2,
   Volume2,
   VolumeX,
-  BookmarkPlus,
   Settings as SettingsIcon,
   X,
 } from 'lucide-react';
@@ -28,7 +27,7 @@ import SettingsPanel, { useSettings } from '@/components/settings-panel';
 import { ResizablePanel, ResizableTaskbar } from '@/components/resizable-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion, TableBounds } from '@/lib/dice-physics';
-import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
+import ActionBar from '@/components/action-bar';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
 import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
 import { AvatarImage, AvatarPicker } from '@/components/avatar';
@@ -57,25 +56,6 @@ export default function Home() {
     [connected, setConnected] = useState(false),
     [notice, setNotice] = useState(''),
     [help, setHelp] = useState(false);
-  const [presets,setPresets]=useState<DicePreset[]>([]);
-  const [presetName,setPresetName]=useState('');
-  useEffect(()=> {
-    const sync=()=>{try{setPresets(readPresets(localStorage.getItem(PRESET_KEY)));}catch{}};
-    sync();window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync);
-  },[]);
-  function persistPresets(next: DicePreset[]) {
-    setPresets(next);
-    try{localStorage.setItem(PRESET_KEY,JSON.stringify({version:1,presets:next}));}
-    catch{setError('Presets are available for this session; browser storage could not save them.');}
-  }
-  function savePreset() {
-    try {
-      const value=validatePreset(presetName,expression);
-      if(presets.length>=30)throw Error('Remove a saved combination before adding another (30 maximum).');
-      if(presets.some(p=>p.name===value.name))throw Error('Use a different name, or remove the existing combination first.');
-      setError('');persistPresets([...presets,{id:crypto.randomUUID(),...value}]);setPresetName('');
-    }catch(e){setError((e as Error).message);}
-  }
   const [sound, setSound] = useState(true);
   const [fresh, setFresh] = useState(false);
   const [settledId, setSettledId] = useState('');
@@ -397,16 +377,8 @@ export default function Home() {
               <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
             </form>
           </>}
-          {cred && <div className="desktop-presets">
-            <form onSubmit={e=>{e.preventDefault();savePreset();}}>
-              <input aria-label="Name for saved dice combination" placeholder="Save this combination as…" value={presetName} maxLength={32} onChange={e=>setPresetName(e.target.value)}/>
-              <Button type="submit" size="sm" variant="outline" title="Save on this device" aria-label="Save current dice combination"><BookmarkPlus size={18}/></Button>
-            </form>
-            {presets.length>0&&<div className="preset-list">{presets.map(p=><span className="preset" key={p.id}>
-              <button disabled={busy||!connected} title={`${p.expression} · roll ${p.name}`} onClick={()=>{setExpression(p.expression);roll(p.expression,p.name).catch(()=>{});}}>{p.name}<small>{p.expression}</small></button>
-              <button className="remove-preset" aria-label={`Remove ${p.name}`} onClick={()=>persistPresets(presets.filter(item=>item.id!==p.id))}><X size={12}/></button>
-            </span>)}</div>}
-          </div>}
+          {cred && <ActionBar expression={expression} disabled={busy || !connected}
+            onRoll={(raw, title) => { setExpression(raw); setLabel(title); roll(raw, title).catch(() => {}); }} />}
           <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
           <small>Drag to move. Throw firmly to record a new roll.</small>
         </section>}
@@ -637,6 +609,8 @@ export default function Home() {
                     )}
                   </div>
                 </div>
+                <ActionBar expression={expression} disabled={busy || !connected}
+                  onRoll={(raw, title) => { setExpression(raw); setLabel(title); roll(raw, title).catch(() => {}); }} />
                 <section className="roller">
                   <div className="section-heading">
                     <h2>Make a roll</h2>

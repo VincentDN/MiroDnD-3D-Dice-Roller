@@ -177,17 +177,21 @@ else {
     remoteSession.setPermissionCheckHandler(() => false);
     savePath = loadSettings();
     remoteSession.on('will-download', (event, item, contents) => {
-      // Only our generated Markdown notebooks may leave the remote app as files.
-      const allowed = contents && isRoomSite(contents.getURL()) &&
-        item.getURL().startsWith('blob:' + SITE_ORIGIN + '/') &&
-        item.getMimeType() === 'text/markdown' &&
+      // Permit only the two app-generated export formats from our own origin.
+      const notebook = item.getMimeType() === 'text/markdown' &&
         /^VincentsVibeRoller-rolls-\d{4}-\d{2}-\d{2}\.md$/.test(item.getFilename());
+      const characters = item.getMimeType() === 'application/json' &&
+        item.getFilename() === 'VincentsVibeRoller-actions.json';
+      const allowed = contents && isRoomSite(contents.getURL()) &&
+        item.getURL().startsWith('blob:' + SITE_ORIGIN + '/') && (notebook || characters);
       if (!allowed) { event.preventDefault(); return; }
-      // A configured folder saves silently; otherwise fall back to the save dialog.
-      if (savePath) {
+      // The configured folder is for notebooks. Character exports always ask.
+      if (notebook && savePath) {
         try { item.setSavePath(path.join(savePath, item.getFilename())); return; } catch { /* Folder may have been deleted; ask instead. */ }
       }
-      item.setSaveDialogOptions({title:'Save roll notebook',filters:[{name:'Markdown',extensions:['md']}]});
+      item.setSaveDialogOptions(characters
+        ? {title:'Export characters',filters:[{name:'Character actions',extensions:['json']}]}
+        : {title:'Save roll notebook',filters:[{name:'Markdown',extensions:['md']}]});
     });
     panel = new BrowserWindow({ width: 490, height: 650, minWidth: 440, minHeight: 600,
       title: 'VincentsVibeRoller Desktop', backgroundColor: '#10151c', autoHideMenuBar: true,

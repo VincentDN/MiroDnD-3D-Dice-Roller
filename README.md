@@ -26,6 +26,14 @@ The native Windows host is in [`desktop/`](desktop/README.md). It opens a transp
 
 Instead of picking a raw color, each player picks an icon (The Star God's Hunger, Teddy, Saravi, Tom Varn) and their dice color follows from that automatically - the server derives the color from the chosen icon, so it can't drift out of sync. Portrait art lives in `public/avatars/` (`star-gods-hunger.png`, `teddy.png`, `saravi.png`, `tom-varn.png`, defined in `lib/avatars.ts`); until those files are added, each icon shows as a colored badge with a themed glyph instead - dropping in the real files at those exact paths upgrades the look with no code changes. Add another icon by adding one entry to `AVATARS` in `lib/avatars.ts` plus its image file.
 
+## Character actions
+
+Both the browser room and Windows overlay offer a **Character actions** bar. Open **Manage actions** to save the current dice expression with a name and optional reminder, edit actions, move them up/down, or organize them into character profiles. Click an action to roll it immediately with its name recorded in the shared history. Choosing a character profile does not change your room player identity.
+
+Collections support up to 12 characters and 30 actions per character. Existing saved combinations are automatically copied into **My character**, with the old data retained as a backup. Actions are saved on this device and synchronize between windows of the same browser/app. Browser and Windows app storage are separate: use **Export characters** / **Import characters** to transfer your JSON collection. Imports add characters without replacing existing ones; malformed files are rejected. The file contains no room invitations, player credentials or roll history.
+
+See the [faster play roadmap](LLM-Docs/PLAY-ROADMAP.md) for the next increments.
+
 ## Personal roll notebook
 
 Open **My roll notes** in the console to comment on your own rolls and choose **Save Markdown** to export them. The latest 1,000 rolls are stored on this device for each room and player. Comments remain after reload; export a file to keep a lasting session record.
