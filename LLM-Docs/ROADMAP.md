@@ -20,9 +20,10 @@ Source: `DiceRoller-FeatureRoadMap-AgentBriefing.docx`, including all four embed
 - [x] ~~Smaller shared-table dice matching the reference.~~
 - [x] ~~Last Roll label with player accent color.~~
 - [x] ~~Validation: 23 web tests, 7 desktop tests, typecheck, production build, local D1 API integration and 2 Chromium browser tests (including drag/button practice rolls, desktop overlay and mobile layout).~~
-- [ ] GitHub delivery (pending approval review; no production deployment).
+- [x] ~~GitHub delivery: implementation pushed to main at c11565d on 2026-09-12, explicitly authorized by the user. Production workflow status must be checked before claiming deployment.~~
 
 ## Status
 
 Implementation complete. Full visible canvas and viewport-aligned walls; recorded bounds preserve deterministic replays and old history. Intro d20 is 1.5 scale with actual settled-face logging; shared rolls use 1.5 instead of 2.1. Exact briefing copy and player-colored Last Roll label applied. Original Word briefing is preserved. User's existing deletion of the Word lock file is unrelated and must not be included in commits. Hosting remains Cloudflare only.
+
 
