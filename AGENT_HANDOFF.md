@@ -23,12 +23,15 @@ This section supersedes the historical installer/feature-branch instructions bel
   windows, desktop grid reserves space for controls/presets, native stylesheet
   handles transparency only, history toggle targets current roll taskbar.
 - Portable custom-origin builds modify only packaged files, not tracked source.
-- Local checks: 21 web unit tests and 7 desktop tests pass; typecheck and
-  Worker build pass. Local D1 migrations pass. Sandbox network-interface access
-  prevents launching Wrangler dev; Chromium download is blocked, so full
-  browser/native EXE verification runs on GitHub CI. Cloudflare credentials
-  are not available in the agent session; production automation needs the
-  repository secrets described above.
+- Validation: 21 web unit tests, 7 desktop tests, typecheck and production
+  Worker build pass. GitHub run 34678895473 passed the full local-D1 API
+  integration, browser/desktop-overlay rendering and cross-window theme tests,
+  plus the actual Windows portable EXE launch/preload check. The local sandbox
+  cannot launch Wrangler dev or download Chromium; CI supplies those gates.
+- PR #5: https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/pull/5.
+  Cloudflare credentials are unavailable in the agent session; the first main
+  workflow will verify whether repository Actions secrets are configured.
+  Check its deploy job before claiming the live site was updated.
 
 ---
 
