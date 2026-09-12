@@ -4,8 +4,8 @@ Transparent, always-on-top physics dice in a compact, interactive window startin
 
 ## Run
 
-1. Extract the entire Windows ZIP into a folder. Keep its files together.
-2. Open `VincentsVibeRoller.exe`.
+1. Download `VincentsVibeRoller.exe` from the latest GitHub Release.
+2. Double-click it. No installation or extraction of supporting files is needed.
 3. Choose **Create a room / open roller**, or paste your party's VincentsVibeRoller invite link and choose **Join**.
 4. Create or join the room in the roller window. The desktop overlay follows that room automatically.
 5. Roll directly using the floating window’s dice buttons and notation box. Drag settled dice with your mouse. New rolls from everyone in the room appear in the same window.
@@ -34,7 +34,7 @@ Enter a dice expression, type a name in **Save this combination as…**, then se
 - Roll directly in the floating window, in the room window, or on your phone. New remote rolls do not steal focus.
 - The app displays virtual 3D dice; it does not capture physical dice through a camera. Throws use cannon-es rigid-body physics, and their outcomes are recorded by the server. Gentle dragging repositions dice locally. Throw firmly to create a new recorded roll for the party; earlier history remains intact.
 - Keep Miro in a normal or borderless window. Exclusive fullscreen applications and Windows secure-desktop prompts may cover overlays.
-- Browser player credentials remain in the app's separate Chromium profile. On first use, join with your name and color; your normal browser's identity is not imported. Room links grant access to the party and are not written to an extra settings file.
+- Browser player credentials remain in the app's separate Chromium profile. On first use, join with your name and icon; your normal browser's identity is not imported. Room links grant access to the party and are not written to an extra settings file.
 - This build is unsigned. Native Windows transparency, dragging, resizing and GPU rendering must be checked on a Windows desktop before treating it as a tested release.
 
 ## Development and packaging
@@ -46,11 +46,15 @@ cd desktop
 npm ci
 npm test
 npm start
-npm run package:win        # portable folder/ZIP (electron-packager)
-npm run package:installer  # real Windows installer (electron-builder + NSIS)
+npm run package:portable  # release/VincentsVibeRoller.exe, Windows x64
+npm run test:portable     # Windows-only launch test of that actual EXE
 ```
 
-The desktop package is independent of the web app's pnpm workspace. `package:win` creates `release/VincentsVibeRoller-win32-x64/`; distribute the whole folder as a ZIP - no Start Menu entry or uninstaller. `package:installer` creates `release/VincentsVibeRoller Setup <version>.exe`, an NSIS installer with a Start Menu entry, optional desktop shortcut and an uninstaller registered in Windows' "Add or remove programs"; it lets the user pick the install folder (assisted install, not one-click) and does not require admin rights (`perMachine: false`, per-user install). The host loads whatever site `config.cjs`'s `SITE_ORIGIN` points at (the live Cloudflare Worker deployment by default - see `../docs/cloudflare-deploy.md`, **not** an OpenAI Sites publish) and applies `overlay.css` to its OBS view inside the native interactive window. Version 0.5.1 requires the matching web deploy for softer audio, larger dice, single-pass roll animations and Markdown notes. Version 0.6.0 adds the Settings panel (volume, theme, roll-notebook save folder), icon-based dice color, the resizable three-panel overlay layout, and the physics/latency fixes - all require the matching web deploy, i.e. someone has actually run `pnpm run deploy` from the repo root against the live worker; merging to `main` alone does not update it.
+`package:win` is an alias for the portable build. There is no installer target. Electron Builder bundles the runtime into a single portable EXE, which extracts its runtime to a temporary directory on launch. It creates no Start Menu entries or uninstaller and requires no admin rights. Preferences and player identity remain in the normal per-user app-data folder, surviving replacement of the EXE. It does not provide offline rooms.
+
+Version 0.7.0 uses the same Cloudflare-hosted web app as browser players. Native code handles only the overlay window, tray/monitor controls and notebook folder access. UI layout, themes, physics and room logic are shared. A new web deployment is picked up on reload/reconnect; updates to native host code require downloading the latest EXE.
+
+CI builds and launches the actual portable executable on every PR. After merge, it publishes that verified file and updates Cloudflare. See [delivery setup](../docs/cloudflare-deploy.md). Packaging `ROLLPARTY_SITE_ORIGIN` overrides are baked into the packaged copy without editing source files.
 
 Remote pages use a sandbox with Node integration disabled. The overlay receives a restricted resize bridge; the room window has no preload bridge. The packaged local control panel receives a narrow, sender-validated controls bridge. Navigation is restricted to the VincentsVibeRoller origin; popups and permission requests are denied. Downloads are limited to generated Markdown roll notebooks. Closing or hiding the controls does not stop shared-room polling.
 

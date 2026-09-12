@@ -123,7 +123,7 @@
 .roll-meta time { margin-left:auto; }
 .compact .roll-entry { padding:6px 10px; }
 .compact .roll-entry b { font-size:14px; }
-.desktop-overlay .overlay-console { max-height:18%; }
+
 
 .dice-canvas { position:relative; }
 .roll-waiting { position:absolute; top:12px; left:50%; transform:translateX(-50%); padding:6px 14px; border-radius:20px; background:var(--overlay-console-bg); color:var(--roll-total-fg); font-size:14px; z-index:1; pointer-events:none; }
@@ -190,3 +190,17 @@
 .taskbar-roll-total { font-size:16px; min-width:22px; text-align:center; border:1px solid var(--roll-total-border); background:var(--roll-total-bg); color:var(--roll-total-fg); border-radius:6px; padding:2px 8px; }
 .taskbar-roll time { font-size:11px; color:var(--text-faint); }
 @media(max-width:540px) { .dice-panel, .console-panel { left:8px; right:8px; width:auto!important; } .console-panel { top:auto!important; bottom:calc(64px + 8px); } }
+
+/* Both browser previews and Electron use this responsive desktop layout.
+   Controls take real space, so presets never cover the dice canvas. */
+.overlay-panels { display:contents; }
+.desktop-overlay { display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:8px; padding:0 8px 8px; }
+.desktop-overlay .desktop-drag-bar { position:static; margin:0 -8px; }
+.desktop-overlay .desktop-roll-controls { position:relative; top:auto; max-height:30vh; margin:0; }
+.desktop-overlay .overlay-panels { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:8px; min-height:0; overflow:hidden; }
+.desktop-overlay .overlay-panel { position:relative; top:auto!important; bottom:auto!important; left:auto; right:auto; max-width:100%; max-height:100%!important; min-width:0!important; min-height:0!important; }
+.desktop-overlay .overlay-taskbar { position:relative; max-height:35vh; min-height:64px; }
+@media(max-width:540px) {
+  .desktop-overlay .overlay-panels { grid-template-columns:1fr; grid-template-rows:minmax(120px,1fr) minmax(60px,auto); }
+  .desktop-overlay .console-panel { width:100%!important; max-height:110px!important; }
+}

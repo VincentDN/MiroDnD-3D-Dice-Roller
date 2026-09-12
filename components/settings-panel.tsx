@@ -10,13 +10,19 @@ import { DEFAULT_SETTINGS, readSettings, SETTINGS_KEY, THEMES, writeSettings, ty
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   useEffect(() => {
-    let value = DEFAULT_SETTINGS;
-    try {
-      value = readSettings(localStorage.getItem(SETTINGS_KEY));
-    } catch {}
-    setSettings(value);
-    setAudioVolume(value.volume);
-    document.documentElement.dataset.theme = value.theme;
+    const sync = () => {
+      let value = DEFAULT_SETTINGS;
+      try { value = readSettings(localStorage.getItem(SETTINGS_KEY)); } catch {}
+      setSettings(value);
+      setAudioVolume(value.volume);
+      document.documentElement.dataset.theme = value.theme;
+    };
+    sync();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === SETTINGS_KEY || event.key === null) sync();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
   function update(next: Partial<Settings>) {
     setSettings((current) => {

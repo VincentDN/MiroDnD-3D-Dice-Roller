@@ -94,7 +94,7 @@ async function applyHistory() {
   if (historyCSS) await contents.removeInsertedCSS(historyCSS).catch(() => {});
   historyCSS = undefined;
   if (!history) historyCSS = await contents.insertCSS(
-    '.overlay-console:not(:has(.error)) { display: none !important; } .overlay-console:has(.error) .roll-log { display: none !important; }',
+    '.overlay-taskbar { display: none !important; }',
   );
 }
 async function loadOverlay() {
@@ -282,7 +282,18 @@ else {
       tray.on('double-click', showPanel);
     } catch { /* The panel remains accessible if the OS has no notification area. */ }
     broadcast();
-    void panel.loadFile(path.join(__dirname, 'controls.html'));
+    const panelLoaded = panel.loadFile(path.join(__dirname, 'controls.html'));
+    // A local-only CI launch check. No remote bridge can trigger this path.
+    const smokePath = process.env.VVR_SMOKE_TEST === '1'
+      ? process.argv.find((arg) => arg.startsWith('--smoke-test='))?.slice(13) : null;
+    if (smokePath) {
+      panelLoaded.then(async () => {
+        const ready = await panel.webContents.executeJavaScript("Boolean(window.rollparty && document.getElementById('roller'))");
+        if (!ready) throw new Error('Packaged controls/preload did not initialize.');
+        fs.writeFileSync(smokePath, JSON.stringify({ ok: true, siteOrigin: SITE_ORIGIN }));
+        app.quit();
+      }).catch(() => app.exit(1));
+    } else void panelLoaded;
   });
   app.on('activate', () => { if (panel) showPanel(); });
   app.on('before-quit', () => { quitting = true; ++navigation; });

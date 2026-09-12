@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
 import RollNotebook from '@/components/roll-notebook';
+import { RollHistory, RollTaskbar } from '@/components/roll-history';
 import SettingsPanel, { useSettings } from '@/components/settings-panel';
 import { ResizablePanel, ResizableTaskbar } from '@/components/resizable-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
@@ -371,53 +372,6 @@ export default function Home() {
       return e + (delta > 0 ? '+1' : '-1');
     });
   }
-  const consoleList = () => (
-    <div className="roll-log" aria-live="polite">
-      {history.length === 0 ? (
-        <div className="empty-log">
-          <Dices size={25} />
-          <p>No rolls yet.</p>
-          <span>Your party’s story starts with a roll.</span>
-        </div>
-      ) : (
-        [...history]
-          .reverse()
-          .slice(0, 100)
-          .map((r) => (
-            <article key={r.id} className="roll-entry">
-              <div className="roll-sentence">
-                <strong style={{color:r.color}}>{r.name}</strong>{' '}rolls{' '}
-                <code>{r.expression}</code>{' = '}
-                <span className="roll-values">{r.dice.map((d,i)=><span key={i} className={!d.kept?'discarded':''} aria-label={!d.kept?`${d.value}, discarded`:undefined}>{i?' + ':''}{d.value}</span>)}
-                {r.modifier!==0 ? (r.modifier>0?' + ':' − ')+Math.abs(r.modifier):''}</span>
-                {' = '}<b className="roll-total">{r.total}</b>
-              </div>
-              <div className="roll-meta">{r.label&&<span>{r.label}</span>}{r.parent&&r.label!=="Mouse throw"&&<span>Mouse throw</span>}<time>{new Date(r.created).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time></div>
-            </article>
-          ))
-      )}
-    </div>
-  );
-  const rollTaskbar = () => (
-    <div className="taskbar-rolls" aria-live="polite">
-      {history.length === 0 ? (
-        <div className="taskbar-empty">
-          <Dices size={18} /> No rolls yet.
-        </div>
-      ) : (
-        [...history]
-          .reverse()
-          .map((r) => (
-            <article key={r.id} className="taskbar-roll">
-              <span className="taskbar-roll-name" style={{ color: r.color }}>{r.name}</span>
-              <span className="taskbar-roll-expr">{r.expression}</span>
-              <b className="taskbar-roll-total">{r.total}</b>
-              <time>{new Date(r.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
-            </article>
-          ))
-      )}
-    </div>
-  );
   if (!ready)
     return (
       <main className="app">
@@ -453,6 +407,7 @@ export default function Home() {
           <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
           <small>Drag to move. Throw firmly to record a new roll.</small>
         </section>}
+        <div className="overlay-panels">
         <ResizablePanel
           storageKey="rollparty:panel-dice"
           className="overlay-panel dice-panel"
@@ -482,6 +437,7 @@ export default function Home() {
           )}
           {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
         </ResizablePanel>
+        </div>
         <ResizableTaskbar
           storageKey="rollparty:panel-rolls-height"
           defaultHeight={110}
@@ -489,7 +445,7 @@ export default function Home() {
           className="overlay-taskbar"
           onHeightChange={setTaskbarHeight}
         >
-          {rollTaskbar()}
+          <RollTaskbar history={history}/>
         </ResizableTaskbar>
       </main>
     );
@@ -839,7 +795,7 @@ export default function Home() {
                     <span className="live">LIVE</span>
                   </div>
                   {cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
-                  {consoleList()}
+                  <RollHistory history={history}/>
                 </section>
               </aside>
             </div>

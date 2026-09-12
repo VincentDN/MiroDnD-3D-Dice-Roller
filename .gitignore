@@ -37,3 +37,7 @@ next-env.d.ts
 /outputs/
 /work/
 *.tsbuildinfo
+
+/wrangler.runtime.toml
+/playwright-report/
+/test-results/

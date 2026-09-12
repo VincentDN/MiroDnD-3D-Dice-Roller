@@ -16,7 +16,9 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 ## Transparent desktop window over Miro
 
-**[Download the Windows installer](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/releases/latest)** - no build tools needed, just run the `.exe` and install. It's unsigned, so Windows SmartScreen may warn on first run (**More info → Run anyway**). Built automatically from `main` by [`.github/workflows/build-desktop.yml`](.github/workflows/build-desktop.yml); see [`desktop/README.md`](desktop/README.md) if you'd rather build it yourself from source.
+**[Download the standalone Windows EXE](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/releases/latest/download/VincentsVibeRoller.exe)** - download and run, no installer, administrator rights or build tools needed. It is unsigned. Both the browser and EXE require an internet connection to the shared Cloudflare room service.
+
+Every PR builds and launch-tests the EXE and tests the browser/Worker. Every merge to `main` publishes a new portable release and deploys the tested Cloudflare site once the repository's Cloudflare secrets are configured. See [automatic delivery and setup](docs/cloudflare-deploy.md).
 
 The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, interactive window initially in the **lower left** of your selected monitor. Drag its header to move it, or use its corner grip to resize it. Roll directly in the overlay. Dice use a fixed orthographic projection; their apparent size does not change while moving. The desktop tray has a purple backdrop, collision sounds, a result ping and a brass fanfare for a kept natural 20. Save named combinations directly in the overlay; presets and mute preference persist on this device. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop while receiving mouse input inside its own window. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
 
@@ -30,11 +32,11 @@ Open **My roll notes** in the console to comment on your own rolls and choose **
 
 ## OBS overlay
 
-Inside a room, select **Overlay → Copy overlay link**. Add this URL as an OBS **Browser Source**, set the width and height to your canvas (e.g. 1920 × 1080), and place the source above your Miro capture. The background is transparent; the dice and compact console are anchored to the bottom right.
+Inside a room, select **Overlay → Copy overlay link**. Add this URL as an OBS **Browser Source**, set the width and height to your canvas (e.g. 1920 × 1080), and place the source above your Miro capture. The background is transparent. Dice and console panels resize independently, with roll history in a bottom taskbar.
 
 A regular browser window cannot be transparent and always-on-top over arbitrary desktop apps. OBS overlays appear in its composition/output. Use the desktop host above for dice on your own desktop. The host works over Miro without modifying Miro or installing a Miro integration.
 
-The overlay is a viewer. Use the normal room page on your computer or phone to roll. Its console shows the three newest rolls. Existing history appears on connection, while only new rolls animate.
+The overlay is a viewer. Use the normal room page on your computer or phone to roll. Its taskbar shows recent rolls. Existing history appears on connection, while only new rolls animate.
 
 ## Room access and data
 
@@ -58,7 +60,7 @@ If your Wrangler resolves relative paths against its configuration directory, us
 - `node --experimental-strip-types --test tests/dice.test.ts tests/geometry.test.ts tests/physics.test.ts tests/interaction.test.ts tests/notebook.test.ts`: dice rules and face geometry.
 - `node tests/session.mjs`: integration test against the running local server. Creates an isolated test room, verifies two players observe identical results, retry deduplication, profile persistence, and access isolation.
 
-Stack: React, Vinext, Three.js, Cloudflare Workers and D1. `.openai/hosting.json` only configures the local-dev D1 binding (`pnpm dev`/`pnpm build`/`pnpm start`); it has no effect on the deployed site above, which runs on Cloudflare via `wrangler.deploy.toml`. Schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
+Stack: React, Vinext, Three.js, Cloudflare Workers and D1. `vite.config.ts` configures local D1; `wrangler.deploy.toml` is the production template. OpenAI Sites is no longer needed for building or deployment. Schema migrations are in `drizzle/`. No application secrets are required in the source. Hosted credentials are managed outside Git.
 
 To deploy your own copy to a different Cloudflare account/domain, see [`docs/cloudflare-deploy.md`](docs/cloudflare-deploy.md).
 

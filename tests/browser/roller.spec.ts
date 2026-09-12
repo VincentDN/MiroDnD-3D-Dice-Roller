@@ -1,0 +1,34 @@
+import { test, expect } from '@playwright/test';
+
+test('browser and desktop overlay share a room, render dice and retain settings', async ({ page, context }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await page.getByPlaceholder('Dungeon Master').fill('Browser ranger');
+  await page.getByRole('button', { name: /Create a room/ }).click();
+  await expect(page.getByRole('button', { name: 'Roll dice' })).toBeVisible();
+  const roomURL = page.url();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: /Miro Light/ }).click();
+  await page.getByRole('button', { name: 'Close settings' }).click();
+  const overlay = await context.newPage();
+  overlay.on('pageerror', (error) => errors.push(error.message));
+  await overlay.setViewportSize({ width: 680, height: 760 });
+  await overlay.goto(roomURL + '&overlay=1&desktop=1');
+  await expect(overlay.locator('.desktop-roll-controls')).toBeVisible();
+  await expect(overlay.locator('html')).toHaveAttribute('data-theme', 'miro-light');
+  await overlay.getByRole('textbox', { name: 'Dice notation' }).fill('1d20');
+  await overlay.getByRole('button', { name: 'Roll', exact: true }).click();
+  await expect(overlay.locator('.taskbar-roll').first()).toContainText('Browser ranger');
+  await expect(page.locator('.roll-entry').first()).toContainText('Browser ranger');
+  await expect(overlay.locator('.dice-panel canvas')).toBeVisible();
+  await expect(overlay.locator('.desktop-result')).toContainText('=', { timeout: 20000 });
+  await expect(overlay.locator('.render-error')).toHaveCount(0);
+  const controls = await overlay.locator('.desktop-roll-controls').boundingBox();
+  const dice = await overlay.locator('.dice-panel').boundingBox();
+  expect(dice!.y).toBeGreaterThanOrEqual(controls!.y + controls!.height);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: /Drakkenheim/ }).click();
+  await expect(overlay.locator('html')).toHaveAttribute('data-theme', 'drakkenheim');
+  expect(errors).toEqual([]);
+});

@@ -1,7 +1,7 @@
 {
   "name": "rollparty-desktop",
   "productName": "VincentsVibeRoller",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Transparent, interactive D&D dice over Miro and other desktop apps",
   "author": "Vincent De Nil",
   "license": "MIT",
@@ -10,26 +10,28 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "prepackage:win": "node scripts/set-site-origin.cjs",
-    "package:win": "electron-packager . VincentsVibeRoller --platform=win32 --arch=x64 --electron-version=44.3.0 --out=release --overwrite --icon=icon.ico --ignore=\"^/(release|tests|package-lock.json|README.md)$\"",
-    "prepackage:installer": "node scripts/set-site-origin.cjs",
-    "package:installer": "electron-builder --win nsis --publish=never"
+    "package:win": "npm run package:portable",
+    "package:portable": "node scripts/package.cjs",
+    "test:portable": "node scripts/smoke-portable.cjs"
   },
   "devDependencies": {
-    "@electron/packager": "20.3.0",
     "electron": "44.3.0",
     "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.rollparty.desktop",
     "productName": "VincentsVibeRoller",
-    "copyright": "Copyright © Vincent De Nil",
-    "asar": true,
+    "copyright": "Copyright \u00a9 Vincent De Nil",
+    "asar": false,
     "files": [
-      "**/*",
-      "!tests/**",
-      "!release/**",
-      "!*.log"
+      "*.cjs",
+      "controls.html",
+      "controls.css",
+      "controls.js",
+      "overlay.css",
+      "icon.ico",
+      "icon.png",
+      "!build-config.cjs"
     ],
     "directories": {
       "output": "release",
@@ -38,17 +40,19 @@
     "publish": null,
     "win": {
       "target": [
-        "nsis"
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "icon.ico"
     },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "VincentsVibeRoller"
+    "portable": {
+      "artifactName": "VincentsVibeRoller.exe",
+      "unpackDirName": false,
+      "requestExecutionLevel": "user"
     }
   }
 }
