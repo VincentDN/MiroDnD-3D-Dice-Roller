@@ -6,7 +6,7 @@ Approved direction: Vincent requested a task roadmap and implementation on 2026-
 
 Deliver one coherent, tested increment per PR. Keep browser and portable desktop behavior aligned. Preserve existing room history and local data. Cloudflare remains the only production host; PR builds validate candidate code, and main delivery publishes the EXE and web app. A successful build does not by itself prove production deployment.
 
-### 1. Character action bars - in progress
+### 1. Character action bars - implemented in PR #6
 
 - [x] Introduce versioned character profiles containing ordered, named dice actions and optional reminders.
 - [x] Migrate existing device presets into a default profile without deleting their original storage.
@@ -14,9 +14,11 @@ Deliver one coherent, tested increment per PR. Keep browser and portable desktop
 - [x] Create, rename and delete profiles; add, edit, reorder and remove actions. Confirm destructive profile deletion and offer action undo.
 - [x] Import/export a portable JSON collection without room keys, credentials or history. Validate the entire file before appending; never replace existing actions silently.
 - [x] Synchronize same-origin windows and make device-local storage limitations clear.
-- [ ] Verify migration, invalid imports, ordering, browser/desktop parity, mobile width and successful labelled rolls.
+- [x] Verify migration, invalid imports, ordering, browser/desktop parity, mobile width and successful labelled rolls.
 
 Acceptance: an existing user retains every valid preset, creates two character profiles, edits/reorders an action, exports/imports on another device and rolls the intended expression and label from either UI. Invalid imports do not change stored data. Profile selection does not impersonate another room player.
+
+Validation: implementation `8d4df01` passed GitHub run [34717031318](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/actions/runs/34717031318): 27 web unit tests, 7 desktop tests, TypeScript, production build, local D1 API integration, all 3 browser tests, Windows portable build and actual EXE launch. Desktop/mobile screenshots inspected. The first increment is available in [PR #6](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/pull/6); it has not been merged or deployed. Later phases remain planned.
 
 ### 2. Linked attack and damage rolls
 
