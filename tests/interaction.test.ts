@@ -13,7 +13,9 @@ test('fixed projection is unchanged by die movement and scales only with viewpor
   const screenWidth=(x:number,y:number,z:number)=>new T.Vector3(x+1,y,z).project(camera).x-new T.Vector3(x-1,y,z).project(camera).x;
   assert(Math.abs(screenWidth(-3,1,-2)-screenWidth(3,4,2))<1e-10);
   assert.notEqual(trayFrustum(9,6,.8,2).top,baseline.top);
-  assert.equal(trayFrustum(9,6,2,1).top,baseline.top*2);
+  assert.equal(trayFrustum(9,6,2,1).top,baseline.top);
+  assert.equal(baseline.top, 3);
+  assert.equal(baseline.right, 6);
 });
 test('only a kept natural d20=20 triggers trumpets; totals and discarded dice do not',()=> {
   assert.equal(resultCue({dice:[{sides:20,value:20,kept:true}]}),'trumpet');

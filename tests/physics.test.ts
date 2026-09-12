@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as C from 'cannon-es';
-import { simulate, createTable, physicalSides, STEP, faceValue, hull } from '../lib/dice-physics.ts';
+import { simulate, createTable, replayTable, evaluatePhysical, evaluateThrow, snapshotMotion, validateBounds, physicalSides, STEP, faceValue, hull } from '../lib/dice-physics.ts';
 
 test('every supported die settles under gravity; replay matches authoritative faces and poses', () => {
   const sides = [4,6,8,10,12,20,100];
@@ -46,4 +46,31 @@ test('maximum percentile pool can resolve eighty physical dice',()=> {
   const result=simulate(Array(40).fill(100),123);
   assert.equal(result.values.length,40);assert.equal(result.physics.poses.length,80);
   assert(result.values.every(v=>v>=1&&v<=100));
+});
+
+test('viewport-sized rolls replay identical faces and poses on a wide table', () => {
+  const result = evaluatePhysical('2d20', 1, 3);
+  assert.equal(result.physics.bounds!.width / result.physics.bounds!.depth, 3);
+  const table = replayTable([20,20], result.physics.seed, undefined, 1, result.physics.bounds);
+  for (let i = 0; i < result.physics.steps; i++) table.world.step(STEP);
+  assert.deepEqual(table.bodies.map(body => [body.position.x,body.position.y,body.position.z]), result.physics.poses.map(pose => pose.p));
+  assert.throws(() => validateBounds({width: NaN, depth: 12}));
+  assert.throws(() => validateBounds({width: 10000, depth: 12}));
+  assert.throws(() => evaluatePhysical('1d20', 1, Infinity));
+});
+
+test('expanded walls accept edge throws and contain the resting die', () => {
+  const table = createTable([20], 123);
+  const bounds = {width: 36, depth: 12};
+  table.resize(bounds);
+  const body = table.bodies[0];
+  body.position.set(16, 2, 0); body.velocity.set(8, 1, 0);
+  const release = table.bodies.map(snapshotMotion);
+  assert.throws(() => evaluateThrow('1d20', release));
+  const result = evaluateThrow('1d20', release, 1, bounds);
+  assert.deepEqual(result.physics.bounds, bounds);
+  assert(result.physics.poses[0].p[0] > 4.5);
+  assert(result.physics.poses[0].p[0] < 18);
+  for (let i = 0; i < 500; i++) table.world.step(STEP);
+  assert(body.position.x < 18 && body.position.x > 4.5);
 });

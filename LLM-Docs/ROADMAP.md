@@ -12,15 +12,17 @@ Source: `DiceRoller-FeatureRoadMap-AgentBriefing.docx`, including all four embed
 
 ## Tasks
 
-- [ ] Full-container intro and main-table physics.
-- [ ] Larger intro die and local roll console.
-- [ ] Title: DnD Sundays 2026: Dungeons of Drakkenheim
-- [ ] Subtitle: It’s just another day, just another job... in the DUNGEONS OF DRAKKENHEIM!
-- [ ] Accent: SIX – SIX – SIX – THE STAR GODS HUNGER – SIX – SIX -SIX
-- [ ] Smaller shared-table dice matching the reference.
-- [ ] Last Roll label with player accent color.
-- [ ] Validation and GitHub delivery.
+- [x] ~~Full-container intro and main-table physics.~~
+- [x] ~~Larger intro die and local roll console.~~
+- [x] ~~Title: DnD Sundays 2026: Dungeons of Drakkenheim~~
+- [x] ~~Subtitle: It’s just another day, just another job... in the DUNGEONS OF DRAKKENHEIM!~~
+- [x] ~~Accent: SIX – SIX – SIX – THE STAR GODS HUNGER – SIX – SIX -SIX~~
+- [x] ~~Smaller shared-table dice matching the reference.~~
+- [x] ~~Last Roll label with player accent color.~~
+- [x] ~~Validation: 23 web tests, 7 desktop tests, typecheck, production build, local D1 API integration and 2 Chromium browser tests (including drag/button practice rolls, desktop overlay and mobile layout).~~
+- [ ] GitHub delivery (pending approval review; no production deployment).
 
 ## Status
 
-Plan recorded before implementation. Original Word briefing is preserved. User's existing deletion of the Word lock file is unrelated and must not be included in commits. Hosting remains Cloudflare only.
+Implementation complete. Full visible canvas and viewport-aligned walls; recorded bounds preserve deterministic replays and old history. Intro d20 is 1.5 scale with actual settled-face logging; shared rolls use 1.5 instead of 2.1. Exact briefing copy and player-colored Last Roll label applied. Original Word briefing is preserved. User's existing deletion of the Word lock file is unrelated and must not be included in commits. Hosting remains Cloudflare only.
+

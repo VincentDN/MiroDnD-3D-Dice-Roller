@@ -1,5 +1,38 @@
 import { test, expect } from '@playwright/test';
 
+test('briefing intro records practice physics and both trays fill their containers', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', {name: 'DnD Sundays 2026: Dungeons of Drakkenheim'})).toBeVisible();
+  const practice = await page.locator('.lobby-dice canvas').boundingBox();
+  // The idle d20 starts at x=-1.875 on a 12-unit-deep table. Move it
+  // beyond the old central wall, then let real physics settle it.
+  await page.mouse.move(practice!.x + practice!.width / 2 - 1.875 * practice!.height / 12, practice!.y + practice!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(practice!.x + practice!.width - 45, practice!.y + 50, {steps:40});
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await expect(page.getByRole('log')).toContainText('#1', {timeout:20000});
+  await page.getByRole('button', {name: 'Roll d20', exact: true}).click();
+  await expect(page.getByRole('log')).toContainText('#2', {timeout: 20000});
+  const value = Number(await page.getByRole('log').locator('b').first().textContent());
+  expect(value).toBeGreaterThanOrEqual(1); expect(value).toBeLessThanOrEqual(20);
+  await page.screenshot({path:'test-results/briefing-intro.png',fullPage:true});
+  await page.getByPlaceholder('Dungeon Master').fill('Briefing wizard');
+  await page.getByRole('button', {name: /Create a room/}).click();
+  await page.getByRole('button', {name: 'Roll dice', exact: true}).click();
+  await expect(page.locator('.tray-label')).toHaveText('Last Roll: Briefing wizard');
+  await expect(page.locator('.tray-result strong')).not.toHaveText('…', {timeout: 20000});
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({width,height:900});
+    const tray = await page.locator('.tray').boundingBox();
+    const canvas = await page.locator('.tray canvas').boundingBox();
+    expect(Math.abs(tray!.height - canvas!.height)).toBeLessThanOrEqual(2);
+    expect(Math.abs(tray!.width - canvas!.width)).toBeLessThanOrEqual(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({path:`test-results/briefing-table-${width}.png`,fullPage:true});
+  }
+});
+
 test('browser and desktop overlay share a room, render dice and retain settings', async ({ page, context }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));

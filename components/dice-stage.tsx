@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as T from 'three';
 import * as C from 'cannon-es';
 import { geometry, facesOf } from '@/lib/dice-geometry';
-import { replayTable, STEP, hull, snapshotMotion, isDeliberateThrow, type Motion } from '@/lib/dice-physics';
+import { replayTable, STEP, hull, faceValue, snapshotMotion, isDeliberateThrow, type Motion, type TableBounds } from '@/lib/dice-physics';
 import type { Roll } from '@/lib/dice';
 import { trayFrustum } from '@/lib/dice-camera';
 import { diceImpact, confirmedSound, unlockSound } from '@/lib/dice-audio';
@@ -85,14 +85,19 @@ function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: bo
   }
   return group;
 }
-export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow }: {
-  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[]) => void;
+export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow, onLocalResult, onViewport, localRollRequest = 0 }: {
+  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[], bounds: TableBounds) => void; onLocalResult?: (value: number) => void; onViewport?: (aspect: number) => void; localRollRequest?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const settledCallback = useRef(onSettled);
   settledCallback.current = onSettled;
   const throwCallback = useRef(onThrow);
   throwCallback.current = onThrow;
+  const localCallback = useRef(onLocalResult); localCallback.current = onLocalResult;
+  const viewportCallback = useRef(onViewport); viewportCallback.current = onViewport;
+  const pendingRef = useRef(pendingExpression); pendingRef.current = pendingExpression;
+  const localRoll = useRef<() => void>(() => {});
+  useEffect(() => { if (localRollRequest) localRoll.current(); }, [localRollRequest]);
   const rendererRef = useRef<T.WebGLRenderer | null>(null);
   useEffect(() => () => { rendererRef.current?.dispose(); rendererRef.current = null; }, []);
   const [failed, setFailed] = useState(false);
@@ -116,7 +121,8 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     const diceScale = (roll?.physics?.diceScale ?? (roll ? 1 : sizeMultiplier > 1 ? sizeMultiplier : 1));
     const logical = roll?.dice || [{sides:20,value:20,kept:true}];
     const dice = logical.flatMap(d => d.sides === 100 ? [{...d,sides:10,tens:true},{...d,sides:10,units:true}] : [d]);
-    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release, diceScale);
+    const table = replayTable(logical.map(d => d.sides), roll?.physics?.seed ?? 123, roll?.physics?.release, diceScale, roll?.physics?.bounds);
+    const baseWidth = table.width, baseDepth = Math.max(table.depth, 12);
     const groups = dice.map(d => { const group = makeDie(d, roll?.color || color); group.scale.setScalar(diceScale); scene.add(group); return group; });
     let step = 0, replay = Boolean(roll?.physics), dragged = false;
     let notified = false;
@@ -182,7 +188,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     }
     function down(e: PointerEvent) {
       unlockSound();
-      if (!interactive || replay || e.button !== 0 || constraint) return;
+      if (!interactive || replay || correcting || pendingRef.current || e.button !== 0 || constraint) return;
       locate(e);
       const hits = ray.intersectObjects(groups,true);
       if (!hits.length) return;
@@ -202,7 +208,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
           if(body.velocity.length()>35)body.velocity.scale(35/body.velocity.length(),body.velocity);
           if(body.angularVelocity.length()>70)body.angularVelocity.scale(70/body.angularVelocity.length(),body.angularVelocity);
         }
-        throwCallback.current?.(roll.id,table.bodies.map(snapshotMotion));
+        throwCallback.current?.(roll.id,table.bodies.map(snapshotMotion), { width: table.width, depth: table.depth });
       }
       if (constraint) table.world.removeConstraint(constraint);
       constraint=null;
@@ -216,10 +222,22 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     let w=1,h=1;
     const resize=()=> {
       w=Math.max(1,el.clientWidth);h=Math.max(1,el.clientHeight);renderer.setSize(w,h);
-      Object.assign(camera,trayFrustum(table.width,table.depth,w/h,sizeMultiplier));
+      Object.assign(camera,trayFrustum(baseWidth,baseDepth,w/h));
       camera.updateProjectionMatrix();
+      viewportCallback.current?.(w/h);
+      if (!replay) table.resize({ width: camera.right * 2, depth: camera.top * 2 });
     };
     const observer=new ResizeObserver(resize);observer.observe(el);resize();
+    localRoll.current = () => {
+      if (roll || constraint) return;
+      unlockSound(); dragged = true;
+      table.bodies.forEach(body => {
+        body.position.set(0, 3 * diceScale, 0);
+        body.velocity.set((Math.random() - .5) * 12, 5, (Math.random() - .5) * 12);
+        body.angularVelocity.set(12 + Math.random() * 12, 8, 10);
+        body.wakeUp();
+      });
+    };
     let frame=0, previous=performance.now(), accumulator=0;
     const animate=(now:number)=> {
       accumulator += Math.min((now-previous)/1000,.1);previous=now;
@@ -234,15 +252,20 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
           groups[i].position.lerpVectors(correctFrom[i].p, new T.Vector3(b.position.x,b.position.y,b.position.z), t);
           groups[i].quaternion.slerpQuaternions(correctFrom[i].q, new T.Quaternion(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w), t);
         });
-        if (t >= 1) correcting = false;
+        if (t >= 1) { correcting = false; resize(); }
       } else {
         table.bodies.forEach((b,i)=> {groups[i].position.set(b.position.x,b.position.y,b.position.z);groups[i].quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);});
+      }
+      if (!roll && dragged && !constraint && table.bodies.every(b => b.sleepState === C.Body.SLEEPING)) {
+        dragged = false;
+        localCallback.current?.(faceValue(table.bodies[0], 20));
       }
       el.style.cursor=(replay)?'progress':constraint?'grabbing':interactive?'grab':'default';
       renderer.render(scene,camera); frame=requestAnimationFrame(animate);
     };
     frame=requestAnimationFrame(animate);
     return ()=> {
+      localRoll.current = () => {};
       cancelAnimationFrame(frame);observer.disconnect();window.removeEventListener('blur',up);up();
       renderer.domElement.removeEventListener('pointerdown',down);
       renderer.domElement.removeEventListener('pointermove',move);

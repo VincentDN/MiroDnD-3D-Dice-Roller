@@ -204,3 +204,20 @@
   .desktop-overlay .overlay-panels { grid-template-columns:1fr; grid-template-rows:minmax(120px,1fr) minmax(60px,auto); }
   .desktop-overlay .console-panel { width:100%!important; max-height:110px!important; }
 }
+
+/* The visible tray is the playing surface, including behind its nonblocking labels. */
+.tray > .dice-canvas { position:absolute; inset:0; height:100%; }
+.tray-label { pointer-events:none; overflow-wrap:anywhere; }
+.lobby aside.lobby-art { padding-top:300px; }
+.lobby-dice { top:0; height:280px; }
+.intro-console { border:1px solid var(--border-strong); border-radius:8px; padding:12px; margin-bottom:22px; background:var(--bg-panel); font-size:12px; }
+.intro-console > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.intro-console p { font-size:12px; margin:6px 0; color:var(--muted-foreground); }
+.intro-console [role=log] { height:76px; overflow:auto; font-family:monospace; }
+.lobby-art .dice-strip { line-height:1.8; overflow-wrap:anywhere; }
+@media(max-width:540px) {
+  header { flex-wrap:wrap; gap:12px; }
+  .header-actions { flex-wrap:wrap; }
+  .dice-picker { grid-template-columns:repeat(7,minmax(0,1fr)); }
+  .die-button { min-width:0; padding-left:2px; padding-right:2px; }
+}

@@ -1,4 +1,15 @@
-# Current handoff - portable EXE and Cloudflare delivery (2026-09-12)
+# Current handoff — feature briefing (2026-09-12)
+
+- Branch: `feature/briefing-full-tray`, based on latest main `82c19f5`.
+- Read `LLM-Docs/ROADMAP.md` for the user's new Word briefing and checked-off work. All embedded mockups were inspected.
+- Implemented full-container canvas/camera/interaction walls, stored validated physics bounds, larger practice d20 with actual settled-face console, exact Drakkenheim copy, smaller main dice and player-colored Last Roll label. Old rolls retain their recorded scale and physics.
+- New rolls use sender viewport aspect; replays retain recorded walls while running and expand to the viewer's viewport for subsequent interaction. Throw requests carry the interaction bounds so releases outside the old central box remain valid.
+- Validation: 23 web unit tests, 7 desktop unit tests, TypeScript, production build, local D1 multiplayer/API integration, and 2 Chromium browser tests pass. Browser tests exercise practice dragging and button rolling, desktop/browser settings sync, and full-height trays at desktop/mobile sizes. Screenshots inspected; mobile header overflow fixed.
+- GitHub upload is pending approval review; production has not been deployed. Original Word document preserved; unrelated user deletion of the Word lock file left unstaged.
+
+---
+
+# Previous handoff - portable EXE and Cloudflare delivery (2026-09-12)
 
 This section supersedes the historical installer/feature-branch instructions below.
 

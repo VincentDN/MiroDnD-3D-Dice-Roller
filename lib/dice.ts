@@ -5,7 +5,7 @@ export type Roll = {
   playerId?: string;
   seq?: number;
   parent?: string;
-  physics?: { diceScale?: number; seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
+  physics?: { bounds?: { width: number; depth: number }; diceScale?: number; seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
   name: string;
   color: string;
   expression: string;

@@ -146,8 +146,8 @@ export async function POST(req: Request) {
         const source=await db.prepare('SELECT data FROM rolls WHERE id=? AND room=?').bind(b.parent,room.id).first<{data:string}>();
         if (!source) throw Error('This roll is no longer available.');
         const parent=JSON.parse(source.data);
-        outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1), parent:b.parent };
-      } else outcome=evaluatePhysical(b.expression,[2,2.1].includes(b.diceScale) ? b.diceScale : 1);
+        outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1,b.bounds ?? parent.physics?.bounds), parent:b.parent };
+      } else outcome=evaluatePhysical(b.expression,[1.5,2,2.1].includes(b.diceScale) ? b.diceScale : 1,b.aspect);
       const roll = {
         id: b.id,
         playerId: player.id,

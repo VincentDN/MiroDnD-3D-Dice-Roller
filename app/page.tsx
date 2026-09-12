@@ -21,12 +21,13 @@ import {
   X,
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
+import IntroDice from '@/components/intro-dice';
 import RollNotebook from '@/components/roll-notebook';
 import { RollHistory, RollTaskbar } from '@/components/roll-history';
 import SettingsPanel, { useSettings } from '@/components/settings-panel';
 import { ResizablePanel, ResizableTaskbar } from '@/components/resizable-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
-import type { Motion } from '@/lib/dice-physics';
+import type { Motion, TableBounds } from '@/lib/dice-physics';
 import { PRESET_KEY, readPresets, validatePreset, type DicePreset } from '@/lib/dice-presets';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
 import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
@@ -34,6 +35,8 @@ import { AvatarImage, AvatarPicker } from '@/components/avatar';
 type Player = { id: string; name: string; color: string; avatar: string | null; seen: number };
 type Credential = { id: string; secret: string };
 export default function Home() {
+  const trayAspect = useRef<number | undefined>(undefined);
+  const onViewport = useCallback((aspect: number) => { trayAspect.current = aspect; }, []);
   const [ready, setReady] = useState(false),
     [key, setKey] = useState(''),
     [overlay, setOverlay] = useState(false),
@@ -272,7 +275,7 @@ export default function Home() {
           retry.current.label !== rollLabel
         )
           retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel };
-        const data = await api({ action: 'roll', ...retry.current, diceScale: desktop ? 2 : 2.1 });
+        const data = await api({ action: 'roll', ...retry.current, diceScale: desktop ? 2 : 1.5, aspect: trayAspect.current });
         retry.current = null;
         ingest([data]);
         return { id: data.id, total: data.total, dice: data.dice };
@@ -317,11 +320,11 @@ export default function Home() {
     } catch {}
     return () => lifecycle.abort();
   }, [roll, cred, overlay]);
-  async function throwDice(parent: string, release: Motion[]) {
+  async function throwDice(parent: string, release: Motion[], bounds: TableBounds) {
     if (!cred || busy) return;
     unlockSound();setBusy(true);setError('');
     try {
-      const result=await api({action:'throw',id:crypto.randomUUID(),parent,release,label:'Mouse throw'});
+      const result=await api({action:'throw',id:crypto.randomUUID(),parent,release,bounds,label:'Mouse throw'});
       ingest([result]);
     } catch(e) {setError((e as Error).message);}
     finally {setBusy(false);}
@@ -544,19 +547,15 @@ export default function Home() {
                 )}
               </form>
               <aside className="lobby-art">
-                <div className="lobby-dice">
-                  <DiceStage roll={null} color={color} />
-                </div>
+                <IntroDice color={color} />
                 <h2>
-                  A little chaos.
-                  <br />A great story.
+                  DnD Sundays 2026: Dungeons of Drakkenheim
                 </h2>
                 <p className="muted">
-                  All seven D&D dice. Your own colors.
-                  <br />A shared roll history and a transparent overlay.
+                  It’s just another day, just another job... in the DUNGEONS OF DRAKKENHEIM!
                 </p>
                 <div className="dice-strip">
-                  d4 · d6 · d8 · d10 · d12 · d20 · d100
+                  SIX – SIX – SIX – THE STAR GODS HUNGER – SIX – SIX -SIX
                 </div>
               </aside>
             </div>
@@ -616,10 +615,10 @@ export default function Home() {
             <div className="table-grid">
               <div className="table-main">
                 <div className="tray">
-                  <div className="tray-label">
-                    <span className="live-dot" /> SHARED DICE TRAY
+                  <div className="tray-label" style={active ? { color: active.color } : undefined}>
+                    <span className="live-dot" style={active ? { background: active.color } : undefined} /> Last Roll: {active?.name ?? 'No rolls yet'}
                   </div>
-                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} sizeMultiplier={2.1} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
+                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} sizeMultiplier={1.5} onViewport={onViewport} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
                   <div className="tray-result">
                     {active ? (
                       <>
