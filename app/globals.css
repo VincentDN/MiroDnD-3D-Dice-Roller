@@ -88,7 +88,6 @@
 .desktop-overlay { pointer-events:auto; }
 .desktop-drag-bar { position:fixed; top:0; left:0; right:0; z-index:5; -webkit-app-region:drag; app-region:drag; padding:9px 12px; font-size:14px; color:var(--desktop-drag-fg); background:var(--desktop-drag-bg); border-radius:10px 10px 0 0; cursor:move; display:flex; justify-content:space-between; gap:10px; user-select:none; }
 .desktop-drag-bar span { font-size:12px; color:var(--desktop-controls-small); }
-.desktop-roll-controls { position:fixed; top:40px; left:0; right:0; z-index:5; max-height:42%; overflow-y:auto; padding:10px 12px; background:var(--desktop-controls-bg); border:1px solid var(--desktop-controls-border); border-radius:10px; }
 .desktop-roll-controls form { display:flex; gap:8px; align-items:end; }
 .desktop-roll-controls input { margin:0; min-width:0; padding:7px 9px; font-size:14px; }
 .desktop-roll-controls label { flex:1; }
@@ -168,41 +167,40 @@
 .avatar-fallback { border-radius:50%; display:grid; place-items:center; color:#10151c; flex-shrink:0; }
 .player .avatar-image, .player .avatar-fallback { flex-shrink:0; }
 
-/* Overlay mode: three independently resizable panels (dice table, console,
-   saved rolls) instead of one fixed block. Position is anchored; only size
-   is user-adjustable, via the browser's native resize handle for the two
-   floating panels and a custom top-edge grip for the bottom taskbar. */
-.overlay-panel { position:fixed; z-index:3; }
-.resizable-panel { resize:both; overflow:auto; }
-.dice-panel { left:16px; }
-.console-panel { right:16px; background:var(--overlay-console-bg); border:1px solid var(--overlay-console-border); border-radius:10px; box-shadow:0 10px 28px #0003; padding-bottom:10px; }
-.console-panel .error { margin:8px 12px 0; }
-.console-panel .roll-notebook { margin:6px 12px; }
-.overlay-taskbar { position:fixed; left:0; right:0; bottom:0; z-index:4; display:flex; flex-direction:column; background:var(--overlay-console-bg); border-top:1px solid var(--overlay-console-border); }
-.taskbar-grip { height:7px; flex:none; cursor:ns-resize; touch-action:none; }
-.taskbar-grip:hover, .taskbar-grip:active { background:var(--accent); }
-.taskbar-content { flex:1; min-height:0; overflow-x:auto; overflow-y:hidden; }
-.taskbar-rolls { display:flex; gap:10px; align-items:center; height:100%; padding:0 14px; }
-.taskbar-empty { display:flex; align-items:center; gap:8px; height:100%; color:var(--empty-log-fg); font-size:13px; white-space:nowrap; padding:0 14px; }
-.taskbar-roll { display:flex; align-items:center; gap:8px; flex:none; white-space:nowrap; background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; padding:6px 12px; }
-.taskbar-roll-name { font-weight:600; font-size:13px; }
-.taskbar-roll-expr { font-size:12px; color:var(--muted-foreground); }
-.taskbar-roll-total { font-size:16px; min-width:22px; text-align:center; border:1px solid var(--roll-total-border); background:var(--roll-total-bg); color:var(--roll-total-fg); border-radius:6px; padding:2px 8px; }
-.taskbar-roll time { font-size:11px; color:var(--text-faint); }
-@media(max-width:540px) { .dice-panel, .console-panel { left:8px; right:8px; width:auto!important; } .console-panel { top:auto!important; bottom:calc(64px + 8px); } }
-
-/* Both browser previews and Electron use this responsive desktop layout.
-   Controls take real space, so presets never cover the dice canvas. */
-.overlay-panels { display:contents; }
-.desktop-overlay { display:grid; grid-template-rows:auto auto minmax(0,1fr) auto; gap:8px; padding:0 8px 8px; }
-.desktop-overlay .desktop-drag-bar { position:static; margin:0 -8px; }
-.desktop-overlay .desktop-roll-controls { position:relative; top:auto; max-height:30vh; margin:0; }
-.desktop-overlay .overlay-panels { display:grid; grid-template-columns:minmax(0,3fr) minmax(0,2fr); gap:8px; min-height:0; overflow:hidden; }
-.desktop-overlay .overlay-panel { position:relative; top:auto!important; bottom:auto!important; left:auto; right:auto; max-width:100%; max-height:100%!important; min-width:0!important; min-height:0!important; }
-.desktop-overlay .overlay-taskbar { position:relative; max-height:35vh; min-height:64px; }
-@media(max-width:540px) {
-  .desktop-overlay .overlay-panels { grid-template-columns:1fr; grid-template-rows:minmax(120px,1fr) minmax(60px,auto); }
-  .desktop-overlay .console-panel { width:100%!important; max-height:110px!important; }
+/* Overlay mode: a full-screen "RPG HUD" instead of small panels stacked in
+   one corner with wasted space below them. A CSS grid gives the drag bar
+   and hotbar rows their natural height and hands the middle row whatever
+   is left, so the console log and dice never need hand-computed pixel
+   offsets - an empty row (no drag bar/hotbar child, i.e. the plain
+   non-desktop OBS overlay) just collapses to zero height on its own.
+   The center/right stays empty and transparent so the board or stream
+   behind the overlay is still visible; only the left edge and, in the
+   interactive desktop overlay, the bottom hotbar are ever drawn on. */
+.overlay-root {
+  display:grid;
+  grid-template-columns:minmax(220px,min(360px,34vw)) 1fr;
+  grid-template-rows:auto 1fr auto;
+}
+.desktop-drag-bar { grid-column:1/-1; grid-row:1; position:static; margin:0; }
+.rpg-left { grid-column:1; grid-row:2; display:flex; flex-direction:column; min-height:0; padding:14px; gap:10px; pointer-events:auto; }
+.console-panel { flex:1; min-height:0; display:flex; flex-direction:column; gap:8px; overflow:hidden; background:var(--overlay-console-bg); border:1px solid var(--overlay-console-border); border-radius:10px; box-shadow:0 10px 28px #0003; padding:12px 0; }
+.console-panel .console-head { padding:0 14px; }
+.console-panel .error { margin:0 14px; }
+.console-panel .overlay-taskbar { flex:1; min-height:0; display:flex; flex-direction:column; }
+.console-panel .roll-log { flex:1; min-height:0; overflow-y:auto; padding:0 14px; }
+.console-panel .roll-notebook { margin:6px 14px 0; flex:none; }
+.rpg-left .dice-panel { flex:none; width:100%; aspect-ratio:1; max-height:52vh; }
+.rpg-hotbar { grid-column:1/-1; grid-row:3; pointer-events:auto; background:var(--overlay-console-bg); border-top:1px solid var(--overlay-console-border); padding:10px 16px; display:flex; flex-direction:column; gap:8px; max-height:42vh; overflow-y:auto; }
+.rpg-hotbar-top { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.rpg-hotbar-top form { display:flex; gap:8px; flex:1; min-width:180px; margin:0; }
+.rpg-hotbar-top input { margin:0; }
+.rpg-hotbar .desktop-result { margin:0; flex:none; white-space:nowrap; }
+.rpg-hotbar .action-bar { margin:0; }
+.rpg-hotbar .action-buttons { flex-wrap:nowrap; overflow-x:auto; padding-bottom:2px; }
+.rpg-hotbar .saved-action { flex-shrink:0; }
+@media(max-width:600px) {
+  .overlay-root { grid-template-columns:1fr; }
+  .rpg-left .dice-panel { max-height:none; flex:1; aspect-ratio:auto; min-height:160px; }
 }
 
 /* The visible tray is the playing surface, including behind its nonblocking labels. */
@@ -245,9 +243,7 @@
 .action-bar input { width:100%; min-width:0; margin:4px 0 0; background:var(--bg-input); color:var(--text); }
 .action-bar input[hidden] { display:none; }
 .action-undo, .action-delete { font-size:12px; padding:8px; background:var(--bg-input); border-radius:6px; }
-.desktop-overlay .action-bar { padding:8px; margin:6px 0; }
-.desktop-overlay .action-buttons { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; }
-.desktop-overlay .saved-action { flex-shrink:0; }
+.rpg-hotbar .action-bar { padding:8px; }
 @media(max-width:540px) { .action-bar { padding:12px; } .action-bar select { max-width:170px; } }
 
 .brand-block { display:flex; flex-direction:column; gap:3px; }

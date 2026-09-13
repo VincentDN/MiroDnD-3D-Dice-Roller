@@ -140,6 +140,7 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
     .locator('.desktop-roll-controls')
     .boundingBox();
   const dice = await overlay.locator('.dice-panel').boundingBox();
-  expect(dice!.y).toBeGreaterThanOrEqual(controls!.y + controls!.height);
+  // The RPG-style HUD anchors the dice above the full-width hotbar, not below it.
+  expect(controls!.y).toBeGreaterThanOrEqual(dice!.y + dice!.height);
   expect(errors).toEqual([]);
 });

@@ -31,26 +31,3 @@ export function RollHistory({ history }: { history: Roll[] }) {
     </div>
   );
 }
-
-export function RollTaskbar({ history }: { history: Roll[] }) {
-  return (
-    <div className="taskbar-rolls" aria-live="polite">
-      {history.length === 0 ? (
-        <div className="taskbar-empty">
-          <Dices size={18} /> No rolls yet.
-        </div>
-      ) : (
-        [...history]
-          .reverse()
-          .map((r) => (
-            <article key={r.id} className="taskbar-roll">
-              <span className="taskbar-roll-name" style={{ color: r.color }}>{r.name}</span>
-              <span className="taskbar-roll-expr">{r.expression}</span>
-              <b className="taskbar-roll-total">{r.total}</b>
-              <time>{new Date(r.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
-            </article>
-          ))
-      )}
-    </div>
-  );
-}
