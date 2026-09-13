@@ -1,3 +1,46 @@
+## ⚠️ Merging a separate branch (ChatGPT/Codex or anyone else) into main after this
+
+If you are working on your own branch (e.g. an in-progress `claude/chatgpt-*`
+branch) and main now contains the two entries below - "custom hotbar button
+colors" and "full-screen RPG-style overlay HUD", both delivered together in
+one push to `main` on 2026-09-13 - read this before merging:
+
+- **Heavily rewritten files**: `app/page.tsx` (the entire `if (overlay) return
+  (...)` block was replaced), `app/globals.css` (the whole overlay-layout
+  section, roughly from the "Overlay mode" comment through the old
+  `@media(max-width:540px)` desktop-overlay rules, was rewritten as a CSS
+  grid), `components/action-bar.tsx` (new color-picker UI and per-button
+  inline styling), `lib/action-profiles.ts` (new optional `color`/`colorMode`/
+  `color2` fields on `SavedAction`). **Deleted**: `components/resizable-panel.tsx`
+  (the `ResizablePanel`/`ResizableTaskbar` components no longer exist -
+  if your branch imports them, drop the import and follow the new grid
+  pattern in `app/page.tsx` instead of resurrecting the file). `RollTaskbar`
+  was also removed from `components/roll-history.tsx` (only `RollHistory`
+  remains) and its `.taskbar-roll*` CSS classes are gone.
+- **If your branch touches any of those files**: don't try to keep both
+  versions of the overlay layout - the new full-screen grid HUD (dice
+  bottom-left, console log on the left, a full-width action hotbar at the
+  bottom for the interactive desktop overlay) is the intended direction going
+  forward. Reapply whatever your branch was doing on top of the new
+  structure rather than reverting it.
+- **If your branch added its own fields to `SavedAction`** (in
+  `lib/action-profiles.ts`) or its own case in `actionFields()`'s parameter
+  list: the new `color`/`colorMode`/`color2` params were appended at the end
+  of `actionFields(name, expression, note, color, colorMode, color2)` -
+  reconcile parameter order/positions rather than dropping either set of
+  fields, and re-run `tests/action-profiles.test.ts` after merging (it
+  exercises the exact expected shape).
+- **Local verification note for whoever merges**: this session ran the
+  actual Playwright browser suite locally (not just unit tests) by pointing
+  `playwright.config.ts` at the sandbox's pre-installed
+  `/opt/pw-browsers/chromium` - a local-only tweak, reverted before every
+  commit, never pushed. Do the same if you need local browser coverage; CI
+  installs its own matching version via `playwright install` regardless.
+- Full technical detail for both changes is in the two dated entries
+  immediately below.
+
+---
+
 # Current handoff - custom hotbar button colors (2026-09-13)
 
 - Follow-up on the same branch (`feature/overlay-fullscreen-redesign`): user wants each saved character action's hotbar button colorable per-action, as flat color, gradient (two colors) or an animated "sparkle" - to make individual actions stand out at a glance.
