@@ -1,3 +1,12 @@
+# Current handoff - starting die and version 0.7.1 (2026-09-13)
+
+- User requested that throwing the ready d20 creates a normal roll, plus subtle version text on the start screen and table, then push to main.
+- Ready-die releases use the existing authenticated throw endpoint with explicit null parent, fixed 1d20 notation and validated release/scale/bounds. Normal ingestion supplies shared history, player identity, replay and result sounds. Existing rethrows continue to use their recorded parent. Pending throws prevent overlapping drags.
+- Start-screen practice rolls also use the shared result cue. Practice history remains local. Version 0.7.1 is shown below the shared header and in the desktop title bar; web and desktop package versions match.
+- Local checks: 27 web unit tests, 7 desktop tests, TypeScript and production build passed. Local Wrangler integration is blocked by uv_interface_addresses. Added CI browser regressions for starting-die throws in browser/desktop and API coverage for physical results, duplicates, rethrows and malformed releases. CI and production verification pending at commit time.
+
+---
+
 # Current handoff - character action bars (2026-09-12)
 
 - User requested a task roadmap and implementation. See `LLM-Docs/PLAY-ROADMAP.md` for the seven ordered phases and acceptance criteria. First increment: character action bars on `feature/character-action-bars`, based on `24dd5c4`.

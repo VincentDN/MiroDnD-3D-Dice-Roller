@@ -1,6 +1,6 @@
 {
   "name": "vincents-vibe-roller",
-  "version": "0.1.0",
+  "version": "0.7.1",
   "private": true,
   "engines": {
     "node": ">=24"

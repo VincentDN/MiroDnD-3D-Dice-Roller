@@ -249,3 +249,7 @@
 .desktop-overlay .action-buttons { flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; }
 .desktop-overlay .saved-action { flex-shrink:0; }
 @media(max-width:540px) { .action-bar { padding:12px; } .action-bar select { max-width:170px; } }
+
+.brand-block { display:flex; flex-direction:column; gap:3px; }
+.app-version { display:block; color:var(--muted-foreground); font-size:10px; font-weight:400; line-height:1.3; letter-spacing:.2px; white-space:nowrap; }
+.desktop-drag-bar .app-version { margin-right:auto; align-self:center; }

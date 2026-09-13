@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import DiceStage from './dice-stage';
+import { evaluate } from '../lib/dice';
+import { confirmedSound } from '../lib/dice-audio';
 
 export default function IntroDice({ color }: { color: string }) {
   const [request, setRequest] = useState(0);
@@ -8,7 +10,11 @@ export default function IntroDice({ color }: { color: string }) {
   return <>
     <div className="lobby-dice">
       <DiceStage roll={null} color={color} sizeMultiplier={1.5} localRollRequest={request}
-        onLocalResult={value => setResults(previous => [{ id: (previous[0]?.id ?? 0) + 1, value }, ...previous].slice(0, 5))} />
+        onLocalResult={value => {
+          confirmedSound({ ...evaluate('1d20', () => value), id: crypto.randomUUID(),
+            name: 'Practice', color, label: '', created: Date.now() }, true);
+          setResults(previous => [{ id: (previous[0]?.id ?? 0) + 1, value }, ...previous].slice(0, 5));
+        }} />
     </div>
     <section className="intro-console" aria-label="Practice roll console">
       <div><strong>Try the dice</strong><button type="button" className="outline" onClick={() => setRequest(n => n + 1)}>Roll d20</button></div>

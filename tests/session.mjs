@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { evaluateThrow } from '../lib/dice-physics.ts';
 const base = process.env.TEST_ORIGIN || 'http://localhost:3000';
 async function call(body, key = '', secret = '') {
   const res = await fetch(base + '/api/session', {
@@ -88,6 +89,38 @@ assert.equal(
 );
 const afterProfile = await call(null, key);
 assert.equal(afterProfile.data.players.find((p) => p.id === c.id).avatar, 'teddy');
+// A starting die has no historical parent but must use its actual release motion.
+const release = [{ p: [-1, 3, 0], q: [0, 0, 0, 1], v: [4, 3, 2], w: [12, 8, 4] }];
+const bounds = { width: 24, depth: 12 };
+const firstThrowRequest = { action: 'throw', id: crypto.randomUUID(), parent: null,
+  release, bounds, diceScale: 1.5, expression: '9d6+100', label: 'Mouse throw' };
+const firstThrow = await call(firstThrowRequest, key, c.secret);
+assert.equal(firstThrow.status, 200, JSON.stringify(firstThrow));
+const expected = evaluateThrow('1d20', release, 1.5, bounds);
+assert.equal(firstThrow.data.expression, '1d20');
+assert.equal(firstThrow.data.total, expected.total);
+assert.deepEqual(firstThrow.data.physics, expected.physics);
+assert.equal(firstThrow.data.playerId, c.id);
+assert.equal(firstThrow.data.parent, undefined);
+const firstThrowDuplicate = await call(firstThrowRequest, key, c.secret);
+assert.equal(firstThrowDuplicate.data.id, firstThrow.data.id);
+assert.equal((await call(null, key, b.secret)).data.rolls.filter(r => r.id === firstThrow.data.id).length, 1);
+await new Promise(resolve => setTimeout(resolve, 550));
+const again = await call({ ...firstThrowRequest, id: crypto.randomUUID(), parent: firstThrow.data.id }, key, c.secret);
+assert.equal(again.status, 200, JSON.stringify(again));
+assert.equal(again.data.parent, firstThrow.data.id);
+assert.equal(again.data.total, expected.total);
+await new Promise(resolve => setTimeout(resolve, 550));
+for (const invalid of [
+  { release: [] },
+  { release: [{ ...release[0], p: [999, 3, 0] }] },
+  { diceScale: 99 },
+  { parent: undefined },
+  { parent: crypto.randomUUID() },
+]) {
+  const rejected = await call({ ...firstThrowRequest, id: crypto.randomUUID(), ...invalid }, key, c.secret);
+  assert.equal(rejected.status, 400, JSON.stringify(rejected));
+}
 console.log(
-  'PASS: room creation, two-player shared results, duplicate protection, access isolation, profile persistence, avatar-derived color',
+  'PASS: shared results, duplicate protection, access isolation, profiles, starting d20 throws, rethrows and invalid release rejection',
 );

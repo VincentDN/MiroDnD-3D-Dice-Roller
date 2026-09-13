@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
 import IntroDice from '@/components/intro-dice';
+import AppVersion from '@/components/app-version';
 import RollNotebook from '@/components/roll-notebook';
 import { RollHistory, RollTaskbar } from '@/components/roll-history';
 import SettingsPanel, { useSettings } from '@/components/settings-panel';
@@ -300,14 +301,14 @@ export default function Home() {
     } catch {}
     return () => lifecycle.abort();
   }, [roll, cred, overlay]);
-  async function throwDice(parent: string, release: Motion[], bounds: TableBounds) {
+  async function throwDice(parent: string | null, release: Motion[], bounds: TableBounds, diceScale: number) {
     if (!cred || busy) return;
-    unlockSound();setBusy(true);setError('');
+    unlockSound();setBusy(true);setError('');setPendingExpression('Mouse throw');
     try {
-      const result=await api({action:'throw',id:crypto.randomUUID(),parent,release,bounds,label:'Mouse throw'});
+      const result=await api({action:'throw',id:crypto.randomUUID(),parent,release,bounds,diceScale,label:'Mouse throw'});
       ingest([result]);
     } catch(e) {setError((e as Error).message);}
-    finally {setBusy(false);}
+    finally {setBusy(false);setPendingExpression(undefined);}
   }
   async function saveProfile() {
     setBusy(true);
@@ -365,7 +366,7 @@ export default function Home() {
     return (
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         {settingsPanel}
-        {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
+        {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <AppVersion /><span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
         {desktop && <section className="desktop-roll-controls">
           {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
             <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
@@ -428,9 +429,12 @@ export default function Home() {
     <main className="app">
       {settingsPanel}
       <header>
-        <a className="brand" href="/">
-          <Dices /> VincentsVibeRoller<span> / D&D</span>
-        </a>
+        <div className="brand-block">
+          <a className="brand" href="/">
+            <Dices /> VincentsVibeRoller<span> / D&D</span>
+          </a>
+          <AppVersion />
+        </div>
         <div className="header-actions">
           {soundButton}
           {settingsButton}

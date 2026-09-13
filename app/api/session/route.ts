@@ -141,7 +141,12 @@ export async function POST(req: Request) {
           429,
         );
       let outcome;
-      if (b.action === 'throw') {
+      if (b.action === 'throw' && b.parent === null) {
+        // Only the ready d20 can start a roll without a recorded parent.
+        // Validate and simulate its release just like any subsequent throw.
+        if (![1.5, 2].includes(b.diceScale)) throw Error('Invalid starting die size.');
+        outcome = evaluateThrow('1d20', b.release, b.diceScale, b.bounds);
+      } else if (b.action === 'throw') {
         if (typeof b.parent !== 'string' || !/^[0-9a-f-]{36}$/.test(b.parent)) throw Error('Choose an existing roll to throw again.');
         const source=await db.prepare('SELECT data FROM rolls WHERE id=? AND room=?').bind(b.parent,room.id).first<{data:string}>();
         if (!source) throw Error('This roll is no longer available.');

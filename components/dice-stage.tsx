@@ -86,7 +86,7 @@ function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: bo
   return group;
 }
 export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow, onLocalResult, onViewport, localRollRequest = 0 }: {
-  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string, release: Motion[], bounds: TableBounds) => void; onLocalResult?: (value: number) => void; onViewport?: (aspect: number) => void; localRollRequest?: number;
+  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string | null, release: Motion[], bounds: TableBounds, diceScale: number) => void; onLocalResult?: (value: number) => void; onViewport?: (aspect: number) => void; localRollRequest?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const settledCallback = useRef(onSettled);
@@ -203,12 +203,13 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
       renderer.domElement.setPointerCapture(e.pointerId); el.style.cursor='grabbing'; e.preventDefault();
     }
     function up(event?: Event) {
-      if (event?.type === 'pointerup' && constraint && roll && isDeliberateThrow(constraint.bodyA)) {
+      if (event?.type === 'pointerup' && constraint && isDeliberateThrow(constraint.bodyA)) {
         for (const body of table.bodies) {
           if(body.velocity.length()>35)body.velocity.scale(35/body.velocity.length(),body.velocity);
           if(body.angularVelocity.length()>70)body.angularVelocity.scale(70/body.angularVelocity.length(),body.angularVelocity);
         }
-        throwCallback.current?.(roll.id,table.bodies.map(snapshotMotion), { width: table.width, depth: table.depth });
+        // The ready d20 has no parent yet; its first throw is still a real roll.
+        throwCallback.current?.(roll?.id ?? null,table.bodies.map(snapshotMotion), { width: table.width, depth: table.depth }, diceScale);
       }
       if (constraint) table.world.removeConstraint(constraint);
       constraint=null;
