@@ -1,3 +1,5 @@
+import type { DiceAppearance } from './dice-appearance.ts';
+import type { DamageGroup } from './action-damage.ts';
 export const SIDES = [4, 6, 8, 10, 12, 20, 100];
 export type Die = { sides: number; value: number; kept: boolean };
 export type Roll = {
@@ -5,6 +7,11 @@ export type Roll = {
   playerId?: string;
   seq?: number;
   parent?: string;
+  appearance?: DiceAppearance;
+  damage?: DamageGroup[];
+  linkedTo?: string;
+  damageIndex?: number;
+  critical?: boolean;
   physics?: { bounds?: { width: number; depth: number }; diceScale?: number; seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
   name: string;
   color: string;

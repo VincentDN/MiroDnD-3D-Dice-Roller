@@ -1,6 +1,8 @@
 import { database } from '@/db/raw';
 import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
 import { evaluatePhysical, evaluateThrow } from '@/lib/dice-physics';
+import { validateAppearance } from '@/lib/dice-appearance';
+import { validateDamage, criticalExpression } from '@/lib/action-damage';
 const json = (data: unknown, status = 200) =>
   Response.json(data, {
     status,
@@ -141,7 +143,22 @@ export async function POST(req: Request) {
           429,
         );
       let outcome;
-      if (b.action === 'throw' && b.parent === null) {
+      let appearance = b.appearance === undefined ? undefined : validateAppearance(b.appearance);
+      let damage = b.damage === undefined ? undefined : validateDamage(b.damage);
+      let linked: {linkedTo:string;damageIndex:number;critical:boolean} | undefined;
+      let rollLabel = name(b.label, '');
+      if (b.action === 'roll' && b.linkedTo !== undefined) {
+        if (typeof b.linkedTo !== 'string' || !/^[0-9a-f-]{36}$/.test(b.linkedTo) || !Number.isInteger(b.damageIndex) || typeof b.critical !== 'boolean') throw Error('Invalid linked damage request.');
+        const source = await db.prepare('SELECT data FROM rolls WHERE id=? AND room=? AND player=?').bind(b.linkedTo,room.id,player.id).first<{data:string}>();
+        if (!source) throw Error('Choose one of your recorded attacks.');
+        const attack = JSON.parse(source.data);
+        const group = validateDamage(attack.damage ?? [])[b.damageIndex];
+        if(!group)throw Error('Unknown damage group.');
+        appearance = group.appearance ?? attack.appearance; damage = undefined;
+        linked = {linkedTo:b.linkedTo,damageIndex:b.damageIndex,critical:b.critical};
+        rollLabel = `${group.name}${b.critical?' (critical)':''}`;
+        outcome = evaluatePhysical(b.critical ? criticalExpression(group.expression) : group.expression, [1.5,2].includes(b.diceScale)?b.diceScale:1.5,b.aspect);
+      } else if (b.action === 'throw' && b.parent === null) {
         // Only the ready d20 can start a roll without a recorded parent.
         // Validate and simulate its release just like any subsequent throw.
         if (![1.5, 2].includes(b.diceScale)) throw Error('Invalid starting die size.');
@@ -151,15 +168,20 @@ export async function POST(req: Request) {
         const source=await db.prepare('SELECT data FROM rolls WHERE id=? AND room=?').bind(b.parent,room.id).first<{data:string}>();
         if (!source) throw Error('This roll is no longer available.');
         const parent=JSON.parse(source.data);
+        appearance=parent.appearance; damage=parent.damage;
+        if(parent.linkedTo)linked={linkedTo:parent.linkedTo,damageIndex:parent.damageIndex,critical:parent.critical};
         outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1,b.bounds ?? parent.physics?.bounds), parent:b.parent };
       } else outcome=evaluatePhysical(b.expression,[1.5,2,2.1].includes(b.diceScale) ? b.diceScale : 1,b.aspect);
       const roll = {
         id: b.id,
         playerId: player.id,
         ...outcome,
+        ...(appearance ? {appearance} : {}),
+        ...(damage ? {damage} : {}),
+        ...linked,
         name: player.name,
         color: player.color,
-        label: name(b.label, ''),
+        label: rollLabel,
         created: now,
       };
       const result = await db.batch([

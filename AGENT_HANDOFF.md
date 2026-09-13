@@ -1,3 +1,15 @@
+# Active work — dice styles, table reveal and throw reset (2026-09-13)
+
+- User approved all tasks in `LLM-Docs/DICE-STYLES-ROADMAP.md`, then prioritized the OBS-recorded throw reset. This increment is still local and uncommitted; do not claim delivery yet.
+- Recording: `2026-09-13 14-54-37.mp4`, 31.5 seconds. Inspected at 2 fps and 10 fps around 16 seconds. A visible jump at 16.0–16.1 seconds coincides with the new roll display. Old code restarted the local throw from its original release when the server returned a new roll ID. The fix retains the live world and elapsed simulation steps for the matching release; same-ID appearance refreshes also retain the world. Settled notification now follows final correction.
+- Implemented: validated appearance schema; classic/dark/sparkly/gradient/metallic materials; per-action colors, number colors, character defaults, named styles/copying and import/export; seven-die previews; validated linked damage with per-group appearance and critical math; immutable server style snapshots and rethrows; full/subtle/off fresh-roll reveal with reduced-motion support.
+- Checks already passed: 30 web unit tests, 7 desktop unit tests, TypeScript, production build and local D1/API checks including appearance snapshots, critical math, invalid styles and cross-player linked-roll isolation.
+- Browser acceptance is running and has not passed yet. One earlier startup run timed out because local cold start exceeded its one-second probe. `work/test-local.mjs` is a copy of the existing integration runner with AbortSignal.timeout(60000) for local warm-up. The first full browser test hit a timeout on this slow machine; inspect its trace and complete the suite. Do not remove acceptance assertions just to get green.
+- Latest edits after that build: mount previews only while expanded; preserve same-ID physics worlds on material/settings changes; show linked damage labels in roll history. Rebuild and recheck before final delivery.
+- Leave the existing deleted Word lock file unstaged. No recording, extracted frames, temporary tools or local database files belong in the commit. Original PLAY-ROADMAP remains partly planned; linked damage is being implemented as a dependency of the newly approved style work.
+
+---
+
 # Current handoff - starting die and version 0.7.1 (2026-09-13)
 
 - User requested that throwing the ready d20 creates a normal roll, plus subtle version text on the start screen and table, then push to main.
@@ -424,4 +436,5 @@ _Update this section on every handoff. Newest entry at the top._
   - All tests green at hand-off: `node --test tests/*.test.ts` in the repo
     root (17/17) and `node --test tests/*.test.cjs` in `desktop/` (7/7).
     `pnpm run build` and `npx tsc --noEmit` both clean.
+
 

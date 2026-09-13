@@ -26,7 +26,7 @@ for (const desktop of [false, true]) {
     await expect(observer.locator('.roll-entry')).toHaveCount(0);
     await page.mouse.move(x, y);
     await page.mouse.down();
-    await expect(page.locator('.dice-canvas')).toHaveCSS('cursor', 'grabbing');
+    await expect(page.locator(desktop ? '.dice-panel .dice-canvas' : '.tray .dice-canvas')).toHaveCSS('cursor', 'grabbing');
     await page.mouse.move(x + 90, y - 55, { steps: 12 });
     await page.waitForTimeout(60);
     const response = page.waitForResponse(res => res.url().endsWith('/api/session') &&
@@ -49,3 +49,4 @@ for (const desktop of [false, true]) {
     await page.screenshot({ path: `test-results/starting-die-${desktop ? 'desktop' : 'browser'}.png`, fullPage: true });
   });
 }
+

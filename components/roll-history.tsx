@@ -1,6 +1,10 @@
 'use client';
 import { Dices } from 'lucide-react';
 import type { Roll } from '@/lib/dice';
+function linkedLabel(roll: Roll, history: Roll[]) {
+  const attack=history.find(r=>r.id===roll.linkedTo);
+  return roll.linkedTo ? `Damage for ${attack?.label || attack?.expression || 'earlier attack'}` : '';
+}
 
 export function RollHistory({ history }: { history: Roll[] }) {
   return (
@@ -24,7 +28,7 @@ export function RollHistory({ history }: { history: Roll[] }) {
                 {r.modifier!==0 ? (r.modifier>0?' + ':' − ')+Math.abs(r.modifier):''}</span>
                 {' = '}<b className="roll-total">{r.total}</b>
               </div>
-              <div className="roll-meta">{r.label&&<span>{r.label}</span>}{r.parent&&r.label!=="Mouse throw"&&<span>Mouse throw</span>}<time>{new Date(r.created).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time></div>
+              <div className="roll-meta">{r.label&&<span>{r.label}</span>}{r.linkedTo&&<span>{linkedLabel(r,history)}</span>}{r.parent&&r.label!=="Mouse throw"&&<span>Mouse throw</span>}<time>{new Date(r.created).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time></div>
             </article>
           ))
       )}
@@ -45,7 +49,7 @@ export function RollTaskbar({ history }: { history: Roll[] }) {
           .map((r) => (
             <article key={r.id} className="taskbar-roll">
               <span className="taskbar-roll-name" style={{ color: r.color }}>{r.name}</span>
-              <span className="taskbar-roll-expr">{r.expression}</span>
+              <span className="taskbar-roll-expr">{r.expression}{r.label&&<small style={{display:'block'}}>{r.label}</small>}{r.linkedTo&&<small style={{display:'block'}}>{linkedLabel(r,history)}</small>}</span>
               <b className="taskbar-roll-total">{r.total}</b>
               <time>{new Date(r.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
             </article>

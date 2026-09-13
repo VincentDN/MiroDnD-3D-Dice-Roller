@@ -29,6 +29,8 @@ import { ResizablePanel, ResizableTaskbar } from '@/components/resizable-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion, TableBounds } from '@/lib/dice-physics';
 import ActionBar from '@/components/action-bar';
+import RollReveal from '@/components/roll-reveal';
+import type { ActionRollOptions } from '@/lib/action-damage';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
 import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
 import { AvatarImage, AvatarPicker } from '@/components/avatar';
@@ -84,7 +86,7 @@ export default function Home() {
     initial = useRef(true),
     animationBusy = useRef(false),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
-    retry = useRef<{ id: string; expression: string; label: string } | null>(
+    retry = useRef<{ id: string; expression: string; label: string; options?: ActionRollOptions } | null>(
       null,
     );
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function Home() {
     timer.current = setTimeout(() => {
       animationBusy.current = false;
       play();
-    }, 150);
+    }, 2100);
   }, [play]);
   const ingest = useCallback(
     (rolls: Roll[], animate = true) => {
@@ -242,7 +244,7 @@ export default function Home() {
     }
   }
   const roll = useCallback(
-    async (raw = expression, rollLabel = label) => {
+    async (raw = expression, rollLabel = label, options?: ActionRollOptions) => {
       if (!cred) throw Error('Join this room first.');
       setBusy(true);
       setError('');
@@ -253,10 +255,10 @@ export default function Home() {
         if (
           !retry.current ||
           retry.current.expression !== raw ||
-          retry.current.label !== rollLabel
+          retry.current.label !== rollLabel || JSON.stringify(retry.current.options) !== JSON.stringify(options)
         )
-          retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel };
-        const data = await api({ action: 'roll', ...retry.current, diceScale: desktop ? 2 : 1.5, aspect: trayAspect.current });
+          retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel, options };
+        const data = await api({ action: 'roll', ...retry.current, ...options, diceScale: desktop ? 2 : 1.5, aspect: trayAspect.current });
         retry.current = null;
         ingest([data]);
         return { id: data.id, total: data.total, dice: data.dice };
@@ -379,7 +381,7 @@ export default function Home() {
             </form>
           </>}
           {cred && <ActionBar expression={expression} disabled={busy || !connected}
-            onRoll={(raw, title) => { setExpression(raw); setLabel(title); roll(raw, title).catch(() => {}); }} />}
+            color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />}
           <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
           <small>Drag to move. Throw firmly to record a new roll.</small>
         </section>}
@@ -391,7 +393,7 @@ export default function Home() {
           minWidth={220} minHeight={200}
           style={{ top: desktop ? 140 : 16, maxHeight: `calc(100vh - ${taskbarHeight + (desktop ? 156 : 32)}px)` }}
         >
-          {(active || desktop) && <DiceStage pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
+          <RollReveal roll={active} settledId={settledId} fresh={fresh} mode={settings.reveal}/>{(active || desktop) && <DiceStage reducedEffects={settings.reducedEffects} pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
         </ResizablePanel>
         <ResizablePanel
           storageKey="rollparty:panel-console"
@@ -594,8 +596,8 @@ export default function Home() {
                   <div className="tray-label" style={active ? { color: active.color } : undefined}>
                     <span className="live-dot" style={active ? { background: active.color } : undefined} /> Last Roll: {active?.name ?? 'No rolls yet'}
                   </div>
-                  <DiceStage pendingExpression={pendingExpression} roll={active} color={color} sizeMultiplier={1.5} onViewport={onViewport} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
-                  <div className="tray-result">
+                  <DiceStage reducedEffects={settings.reducedEffects} pendingExpression={pendingExpression} roll={active} color={color} sizeMultiplier={1.5} onViewport={onViewport} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
+                  <RollReveal roll={active} settledId={settledId} fresh={fresh} mode={settings.reveal}/><div className="tray-result">
                     {active ? (
                       <>
                         <span>
@@ -614,7 +616,7 @@ export default function Home() {
                   </div>
                 </div>
                 <ActionBar expression={expression} disabled={busy || !connected}
-                  onRoll={(raw, title) => { setExpression(raw); setLabel(title); roll(raw, title).catch(() => {}); }} />
+                  color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
                 <section className="roller">
                   <div className="section-heading">
                     <h2>Make a roll</h2>

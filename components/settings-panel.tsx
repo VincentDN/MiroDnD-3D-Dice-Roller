@@ -112,6 +112,7 @@ export default function SettingsPanel({
           </p>
         )}
       </section>
+      <section className="settings-section"><label>Roll reveal<select value={settings.reveal??'full'} onChange={e=>update({reveal:e.target.value as Settings['reveal']})}><option value="full">Full reveal</option><option value="subtle">Subtle glow</option><option value="off">Off</option></select></label><label><input type="checkbox" checked={settings.reducedEffects??false} onChange={e=>update({reducedEffects:e.target.checked})}/>Reduce decorative dice effects</label></section>
     </div>
   );
 }

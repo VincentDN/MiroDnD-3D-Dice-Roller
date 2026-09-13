@@ -15,15 +15,28 @@ import {
   type SavedAction,
 } from '@/lib/action-profiles';
 import { PRESET_KEY } from '@/lib/dice-presets';
+import AppearanceEditor from './appearance-editor';
+import { defaultAppearance, type DiceAppearance } from '@/lib/dice-appearance';
+import {
+  validateDamage,
+  type DamageGroup,
+  type ActionRollOptions,
+} from '@/lib/action-damage';
 
 export default function ActionBar({
   expression,
   disabled,
   onRoll,
+  color = '#32a6c8',
 }: {
   expression: string;
   disabled: boolean;
-  onRoll: (expression: string, label: string) => void;
+  onRoll: (
+    expression: string,
+    label: string,
+    options?: ActionRollOptions,
+  ) => Promise<{ id: string }>;
+  color?: string;
 }) {
   const [collection, setCollection] = useState<ActionCollection | null>(null);
   const [error, setError] = useState('');
@@ -32,6 +45,14 @@ export default function ActionBar({
   const [name, setName] = useState('');
   const [dice, setDice] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [appearance, setAppearance] = useState<DiceAppearance>();
+  const [damage, setDamage] = useState<DamageGroup[]>([]);
+  const [styleName, setStyleName] = useState('');
+  const [attack, setAttack] = useState<{
+    id: string;
+    name: string;
+    groups: DamageGroup[];
+  } | null>(null);
   const [character, setCharacter] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [undo, setUndo] = useState<{
@@ -46,6 +67,8 @@ export default function ActionBar({
     setName('');
     setDice(null);
     setNote('');
+    setAppearance(undefined);
+    setDamage([]);
     setConfirmDelete(false);
   }
   useEffect(() => {
@@ -115,7 +138,11 @@ export default function ActionBar({
   function saveAction() {
     if (!profile) return;
     try {
-      const fields = actionFields(name, dice ?? expression, note);
+      const fields = {
+        ...actionFields(name, dice ?? expression, note),
+        appearance,
+        damage: validateDamage(damage),
+      };
       if (
         profile.actions.some(
           (a) =>
@@ -237,13 +264,55 @@ export default function ActionBar({
                 disabled={disabled}
                 title={a.note || a.expression}
                 aria-label={`Roll ${a.name}`}
-                onClick={() => onRoll(a.expression, a.name)}
+                onClick={async () => {
+                  try {
+                    const result = await onRoll(a.expression, a.name, {
+                      appearance: a.appearance ?? profile.appearance,
+                      damage: a.damage,
+                    });
+                    setAttack(
+                      a.damage?.length
+                        ? { id: result.id, name: a.name, groups: a.damage }
+                        : null,
+                    );
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
               >
                 <strong>{a.name}</strong>
                 <small>{a.expression}</small>
               </button>
             ))}
           </div>
+          {attack && (
+            <div className="linked-damage">
+              <strong>{attack.name}: roll damage if it hits</strong>
+              {attack.groups.map((g, i) => (
+                <div key={i}>
+                  <span>
+                    {g.name} · {g.expression}
+                  </span>
+                  {[false, true].map((critical) => (
+                    <button
+                      type="button"
+                      key={String(critical)}
+                      disabled={disabled}
+                      onClick={() => {
+                        onRoll(g.expression, g.name, {
+                          linkedTo: attack.id,
+                          damageIndex: i,
+                          critical,
+                        }).catch((e) => setError((e as Error).message));
+                      }}
+                    >
+                      {critical ? 'Critical damage' : 'Damage'}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
           {!profile.actions.length && (
             <p className="muted">
               Save your attacks, checks and spells for one-click rolls.
@@ -294,6 +363,8 @@ export default function ActionBar({
                         setName(a.name);
                         setDice(a.expression);
                         setNote(a.note);
+                        setAppearance(a.appearance);
+                        setDamage(a.damage ?? []);
                       }}
                     >
                       Edit
@@ -397,7 +468,169 @@ export default function ActionBar({
                   </button>
                 )}
               </div>
+              <AppearanceEditor
+                value={appearance}
+                onChange={setAppearance}
+                fallback={profile.appearance ?? defaultAppearance(color)}
+              />
+              <label>
+                Copy appearance
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const [kind, index] = e.target.value.split(':');
+                    setAppearance(
+                      kind === 'style'
+                        ? profile.styles?.[+index]?.appearance
+                        : (profile.actions[+index]?.appearance ??
+                            profile.appearance),
+                    );
+                  }}
+                >
+                  <option value="">Choose saved style or action</option>
+                  {profile.styles?.map((s, i) => (
+                    <option value={`style:${i}`} key={`s${i}`}>
+                      Style: {s.name}
+                    </option>
+                  ))}
+                  {profile.actions.map((a, i) => (
+                    <option value={`action:${i}`} key={a.id}>
+                      Action: {a.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Save this style as
+                <input
+                  value={styleName}
+                  maxLength={40}
+                  onChange={(e) => setStyleName(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!styleName.trim()) {
+                    setError('Name this style first.');
+                    return;
+                  }
+                  const styles = [
+                    ...(profile.styles ?? []).filter(
+                      (s) => s.name !== styleName.trim(),
+                    ),
+                    {
+                      name: styleName.trim(),
+                      appearance:
+                        appearance ??
+                        profile.appearance ??
+                        defaultAppearance(color),
+                    },
+                  ];
+                  if (
+                    commit({
+                      ...collection,
+                      profiles: collection.profiles.map((p) =>
+                        p.id === profile.id ? { ...p, styles } : p,
+                      ),
+                    })
+                  )
+                    setStyleName('');
+                }}
+              >
+                Save reusable style
+              </button>
+              <details>
+                <summary>Linked damage groups (optional)</summary>
+                <p>
+                  For attacks: roll damage only after deciding the attack hits.
+                  Critical damage doubles dice, not flat bonuses.
+                </p>
+                {damage.map((g, i) => (
+                  <fieldset key={i}>
+                    <legend>Damage group {i + 1}</legend>
+                    <label>
+                      Damage name
+                      <input
+                        value={g.name}
+                        maxLength={40}
+                        onChange={(e) =>
+                          setDamage(
+                            damage.map((x, j) =>
+                              j === i ? { ...x, name: e.target.value } : x,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      Damage dice
+                      <input
+                        value={g.expression}
+                        onChange={(e) =>
+                          setDamage(
+                            damage.map((x, j) =>
+                              j === i
+                                ? { ...x, expression: e.target.value }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </label>
+                    <AppearanceEditor
+                      title={`${g.name || 'Damage'} appearance`}
+                      value={g.appearance}
+                      fallback={
+                        appearance ??
+                        profile.appearance ??
+                        defaultAppearance(color)
+                      }
+                      onChange={(a) =>
+                        setDamage(
+                          damage.map((x, j) =>
+                            j === i ? { ...x, appearance: a } : x,
+                          ),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDamage(damage.filter((_, j) => j !== i))
+                      }
+                    >
+                      Remove damage group
+                    </button>
+                  </fieldset>
+                ))}
+                <button
+                  type="button"
+                  disabled={damage.length >= 6}
+                  onClick={() =>
+                    setDamage([
+                      ...damage,
+                      { name: 'Damage', expression: '1d6' },
+                    ])
+                  }
+                >
+                  Add damage group
+                </button>
+              </details>
             </form>
+            <AppearanceEditor
+              title="Character default appearance"
+              value={profile.appearance}
+              fallback={defaultAppearance(color)}
+              onChange={(a) =>
+                commit({
+                  ...collection,
+                  profiles: collection.profiles.map((p) =>
+                    p.id === profile.id ? { ...p, appearance: a } : p,
+                  ),
+                })
+              }
+            />
             <form
               className="character-editor"
               onSubmit={(e) => {

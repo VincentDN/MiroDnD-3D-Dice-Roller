@@ -253,3 +253,21 @@
 .brand-block { display:flex; flex-direction:column; gap:3px; }
 .app-version { display:block; color:var(--muted-foreground); font-size:10px; font-weight:400; line-height:1.3; letter-spacing:.2px; white-space:nowrap; }
 .desktop-drag-bar .app-version { margin-right:auto; align-self:center; }
+
+.appearance-editor { border:1px solid var(--border-strong); border-radius:10px; padding:12px; margin:12px 0; min-width:0; }
+.appearance-fields { display:flex; flex-wrap:wrap; gap:12px; }
+.appearance-fields label { flex:1 1 100px; }
+.appearance-editor input[type=color] { width:64px; height:38px; padding:2px; }
+.appearance-editor input[type=checkbox] { width:auto; display:inline; margin-right:8px; }
+.appearance-preview { height:210px; background:var(--bg-panel); border-radius:8px; }
+.appearance-editor select, .action-editor select { max-width:100%; }
+.linked-damage { padding:12px; border:1px solid var(--border); border-radius:8px; }
+.linked-damage > div { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:8px; }
+.roll-reveal { position:absolute; inset:0; z-index:4; pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; border-radius:inherit; color:var(--text); background:color-mix(in srgb,var(--reveal-color) 26%,transparent); box-shadow:inset 0 0 70px color-mix(in srgb,var(--reveal-color) 75%,transparent); animation:roll-reveal-pulse 2s ease-out both; text-shadow:0 2px 4px #000a; overflow:hidden; }
+.reveal-player { font-size:clamp(20px,3vw,32px); }
+.roll-reveal p { max-width:90%; max-height:5em; overflow:hidden; font-size:clamp(12px,2vw,19px); margin:10px 0; }
+.reveal-total { font-size:clamp(60px,9vw,110px); line-height:1; }
+.roll-reveal.subtle { inset:auto 12px 12px; flex-direction:row; gap:15px; padding:10px; background:var(--bg-panel); }
+.roll-reveal.subtle .reveal-player { font-size:16px; }
+@keyframes roll-reveal-pulse { 0% {opacity:0} 15%,75% {opacity:1} 100% {opacity:0} }
+@media(prefers-reduced-motion:reduce) { .roll-reveal { animation:none; box-shadow:none; background:color-mix(in srgb,var(--reveal-color) 18%,var(--bg-panel)); } }

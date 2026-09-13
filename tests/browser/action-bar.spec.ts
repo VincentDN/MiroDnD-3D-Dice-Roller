@@ -30,7 +30,7 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
   overlay.on('pageerror', (e) => errors.push(e.message));
   await overlay.setViewportSize({ width: 680, height: 760 });
   await overlay.goto(page.url() + '&overlay=1&desktop=1');
-  await bar.locator('summary').click();
+  await bar.locator('summary').filter({ hasText: /^Manage actions$/ }).click();
   await bar.getByRole('button', { name: 'Edit Sword', exact: true }).click();
   await bar.getByLabel('Action name', { exact: true }).fill('Longsword');
   await bar.getByLabel('Action dice', { exact: true }).fill('1d20+7');
@@ -106,7 +106,7 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
           .name,
     ),
   ).toBe('Sword');
-  await bar.locator('summary').click();
+  await bar.locator('summary').filter({ hasText: /^Manage actions$/ }).click();
   await bar
     .getByRole('button', { name: 'Delete character', exact: true })
     .click();
@@ -130,7 +130,7 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
   }
   await overlay
     .getByRole('region', { name: 'Character actions' })
-    .locator('summary')
+    .locator('summary').filter({ hasText: /^Manage actions$/ })
     .click();
   await overlay.screenshot({
     path: 'test-results/action-bar-desktop.png',
@@ -143,3 +143,4 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
   expect(dice!.y).toBeGreaterThanOrEqual(controls!.y + controls!.height);
   expect(errors).toEqual([]);
 });
+

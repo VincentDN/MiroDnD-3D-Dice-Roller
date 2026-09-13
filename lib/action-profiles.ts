@@ -1,5 +1,7 @@
 import { parseExpression } from './dice.ts';
 import { readPresets } from './dice-presets.ts';
+import { validateAppearance, type DiceAppearance } from './dice-appearance.ts';
+import { validateDamage, type DamageGroup } from './action-damage.ts';
 
 export const ACTIONS_KEY = 'rollparty:actions:v1';
 export const MAX_PROFILES = 12;
@@ -10,11 +12,15 @@ export type SavedAction = {
   name: string;
   expression: string;
   note: string;
+  appearance?: DiceAppearance;
+  damage?: DamageGroup[];
 };
 export type ActionProfile = {
   id: string;
   name: string;
   actions: SavedAction[];
+  appearance?: DiceAppearance;
+  styles?: {name: string; appearance: DiceAppearance}[];
 };
 export type ActionCollection = {
   version: 1;
@@ -94,12 +100,19 @@ export function parseCollection(raw: string): ActionCollection {
     return {
       id: id(p.id),
       name: profileName(p.name),
+      ...(p.appearance ? {appearance:validateAppearance(p.appearance)} : {}),
+      ...(p.styles !== undefined ? {styles: (() => {
+        if(!Array.isArray(p.styles) || p.styles.length > 30) throw Error('Use up to 30 saved styles.');
+        return p.styles.map(s => ({name:text(s.name,40,'Style name'),appearance:validateAppearance(s.appearance)}));
+      })()} : {}),
       actions: p.actions.map((input: unknown) => {
         const a = record(input);
         if (!a) throw Error('Invalid action.');
         return {
           id: id(a.id),
           ...actionFields(a.name, a.expression, a.note ?? ''),
+          ...(a.appearance ? {appearance:validateAppearance(a.appearance)} : {}),
+          ...(a.damage !== undefined ? {damage:validateDamage(a.damage)} : {}),
         };
       }),
     };

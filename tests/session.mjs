@@ -124,3 +124,15 @@ for (const invalid of [
 console.log(
   'PASS: shared results, duplicate protection, access isolation, profiles, starting d20 throws, rethrows and invalid release rejection',
 );
+await new Promise(r=>setTimeout(r,550));
+const appearance={style:'gradient',body:'#ff4400',numbers:'#ffffff',secondary:'#5500ff',sparkle:'#ffffff',intensity:.4};
+const styled=await call({action:'roll',id:crypto.randomUUID(),expression:'1d20+4',appearance,damage:[{name:'Fire',expression:'2d6+3'}]},key,c.secret);
+assert.equal(styled.status,200,JSON.stringify(styled));assert.deepEqual(styled.data.appearance,appearance);
+const other=await call({action:'roll',id:crypto.randomUUID(),linkedTo:styled.data.id,damageIndex:0,critical:true},key,b.secret);
+assert.equal(other.status,400,'Another player cannot roll linked damage for this attack');
+await new Promise(r=>setTimeout(r,550));
+const critical=await call({action:'roll',id:crypto.randomUUID(),linkedTo:styled.data.id,damageIndex:0,critical:true,expression:'40d20',appearance:{...appearance,body:'#000000'}},key,c.secret);
+assert.equal(critical.status,200,JSON.stringify(critical));assert.equal(critical.data.expression,'4d6+3');assert.deepEqual(critical.data.appearance,appearance);assert.equal(critical.data.linkedTo,styled.data.id);
+await new Promise(r=>setTimeout(r,550));
+const badStyle=await call({action:'roll',id:crypto.randomUUID(),expression:'1d20',appearance:{...appearance,body:'red;script'}},key,c.secret);assert.equal(badStyle.status,400);
+console.log('PASS: appearance snapshots, validated linked damage, critical math and cross-player isolation');

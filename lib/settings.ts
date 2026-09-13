@@ -1,5 +1,5 @@
 export type ThemeId = 'default' | 'drakkenheim' | 'miro-light';
-export type Settings = { theme: ThemeId; volume: number };
+export type Settings = { theme: ThemeId; volume: number; reveal?: 'full'|'subtle'|'off'; reducedEffects?: boolean };
 
 export const SETTINGS_KEY = 'rollparty:settings';
 
@@ -22,12 +22,12 @@ export function readSettings(raw: string | null): Settings {
     if (!data || data.version !== 1) return DEFAULT_SETTINGS;
     const theme = isTheme(data.theme) ? data.theme : DEFAULT_SETTINGS.theme;
     const volume = Number.isFinite(data.volume) ? Math.min(1, Math.max(0, data.volume)) : DEFAULT_SETTINGS.volume;
-    return { theme, volume };
+    return { theme, volume, ...(['full','subtle','off'].includes(data.reveal)?{reveal:data.reveal}:{}), ...(typeof data.reducedEffects==='boolean'?{reducedEffects:data.reducedEffects}:{}) };
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
 export function writeSettings(settings: Settings): string {
-  return JSON.stringify({ version: 1, theme: settings.theme, volume: settings.volume });
+  return JSON.stringify({ version: 1, ...settings });
 }
