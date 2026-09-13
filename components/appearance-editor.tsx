@@ -168,6 +168,7 @@ export default function AppearanceEditor({
                   created: 0,
                 }
               }
+              previewZoom={preview ? 1 : 3}
               appearance={a}
               color={a.body}
               interactive={false}

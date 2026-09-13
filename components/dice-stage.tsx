@@ -82,8 +82,8 @@ function makeDie(die: { sides: number; kept: boolean; tens?: boolean; units?: bo
   }
   return group;
 }
-export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow, onLocalResult, onViewport, localRollRequest = 0, appearance, reducedEffects = false }: {
-  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string | null, release: Motion[], bounds: TableBounds, diceScale: number) => void; onLocalResult?: (value: number) => void; onViewport?: (aspect: number) => void; localRollRequest?: number; appearance?: DiceAppearance; reducedEffects?: boolean;
+export default function DiceStage({ roll, transparent = false, color = '#32a6c8', sizeMultiplier = 1, interactive = true, fresh = false, pendingExpression, onSettled, onThrow, onLocalResult, onViewport, localRollRequest = 0, appearance, reducedEffects = false, previewZoom = 1 }: {
+  roll: Roll | null; pendingExpression?: string; transparent?: boolean; color?: string; sizeMultiplier?: number; interactive?: boolean; fresh?: boolean; onSettled?: (id: string) => void; onThrow?: (parent: string | null, release: Motion[], bounds: TableBounds, diceScale: number) => void; onLocalResult?: (value: number) => void; onViewport?: (aspect: number) => void; localRollRequest?: number; appearance?: DiceAppearance; reducedEffects?: boolean; previewZoom?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const settledCallback = useRef(onSettled);
@@ -111,6 +111,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
     renderer.shadowMap.enabled = true;
     el.appendChild(renderer.domElement);
     const scene = new T.Scene(), camera = new T.OrthographicCamera(-8,8,5,-5,.1,100);
+    camera.zoom = previewZoom;
     camera.position.set(0, 20, .001); camera.lookAt(0,0,0);
     camera.updateMatrixWorld();
     scene.add(new T.HemisphereLight(0xcdefff,0x294351,3));
@@ -294,7 +295,7 @@ export default function DiceStage({ roll, transparent = false, color = '#32a6c8'
   // created, so a differently-referenced-but-same-id roll (e.g. re-fetched by a poll
   // that raced a direct roll response) must not tear down and restart the animation
   // already playing it - that looked like the dice resetting mid-air and re-rolling.
-  }, [roll?.id,transparent,color,sizeMultiplier,interactive,fresh,JSON.stringify(appearance),reducedEffects]);
+  }, [roll?.id,transparent,color,sizeMultiplier,interactive,fresh,JSON.stringify(appearance),reducedEffects,previewZoom]);
   return <div className="dice-canvas" ref={host} aria-busy={Boolean(pendingExpression)} aria-label="Physics dice tray: drag to move, throw firmly to record a new roll">
     {pendingExpression && <span className="roll-waiting" role="status">Rolling…</span>}
     {failed && <p className="render-error">3D graphics unavailable. Your roll result is still shown below.</p>}

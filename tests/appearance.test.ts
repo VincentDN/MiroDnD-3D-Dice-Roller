@@ -30,6 +30,9 @@ test('appearance round trips through profiles and imports without changing old a
           {
             id: 'a',
             name: 'Firebolt',
+            color: '#112233',
+            colorMode: 'gradient',
+            color2: '#445566',
             expression: '1d20+4',
             note: '',
             appearance,
@@ -44,6 +47,8 @@ test('appearance round trips through profiles and imports without changing old a
     parsed.profiles[0].actions[0].damage?.[0].appearance,
     appearance,
   );
+  assert.equal(parsed.profiles[0].actions[0].color2, '#445566');
+  assert.equal(parsed.profiles[0].actions[0].appearance?.body, '#ff0033');
   const imported = appendImport(parsed, raw, () => crypto.randomUUID());
   assert.equal(imported.profiles.length, 2);
   assert.deepEqual(imported.profiles[1].styles, parsed.profiles[0].styles);

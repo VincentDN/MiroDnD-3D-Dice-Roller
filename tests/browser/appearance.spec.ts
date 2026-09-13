@@ -12,7 +12,9 @@ test('action appearance, linked damage and reveal persist across browser and ove
   await editor.getByLabel('Action name', { exact: true }).fill('Fire sword');
   await editor.getByLabel('Action dice', { exact: true }).fill('1d20+4');
   const style = editor.locator('.appearance-editor').first();
-  await style.getByRole('combobox', { name: 'Style', exact: true }).selectOption('gradient');
+  await style
+    .getByRole('combobox', { name: 'Style', exact: true })
+    .selectOption('gradient');
   await style.getByLabel('Die color', { exact: true }).fill('#ff4400');
   await style.getByLabel('Number color', { exact: true }).fill('#ffffff');
   await editor
@@ -24,6 +26,8 @@ test('action appearance, linked damage and reveal persist across browser and ove
   await editor.getByRole('button', { name: 'Add action', exact: true }).click();
   const observer = await context.newPage();
   await observer.goto(page.url() + '&overlay=1&desktop=1');
+  await expect(observer.locator('.console-head .live')).toHaveText('LIVE');
+  await page.bringToFront();
   const request = page.waitForResponse(
     (r) =>
       r.url().endsWith('/api/session') &&
@@ -36,12 +40,14 @@ test('action appearance, linked damage and reveal persist across browser and ove
   const attack = await (await request).json();
   expect(attack.appearance.style).toBe('gradient');
   expect(attack.appearance.body).toBe('#ff4400');
-  await expect(page.locator('.roll-reveal')).toContainText('Style mage', {
-    timeout: 20000,
-  });
-  await expect(observer.locator('.roll-reveal')).toContainText('Style mage', {
-    timeout: 20000,
-  });
+  await Promise.all([
+    expect(page.locator('.roll-reveal')).toContainText('Style mage', {
+      timeout: 20000,
+    }),
+    expect(observer.locator('.roll-reveal')).toContainText('Style mage', {
+      timeout: 20000,
+    }),
+  ]);
   await page.waitForTimeout(600);
   const damageResponse = page.waitForResponse(
     (r) =>
@@ -86,4 +92,3 @@ test('action appearance, linked damage and reveal persist across browser and ove
     fullPage: true,
   });
 });
-

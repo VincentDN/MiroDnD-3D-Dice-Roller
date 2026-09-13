@@ -22,14 +22,16 @@ Validation: implementation `8d4df01` passed GitHub run [34717031318](https://git
 
 ### 2. Linked attack and damage rolls
 
-- [ ] Extend actions with optional attack expression and separately named damage groups/types.
-- [ ] Group attack, damage and critical-damage records with explicit server-validated relationship IDs.
-- [ ] Offer Damage / Critical damage after an attack; do not infer hits without target AC.
-- [ ] Define standard critical behavior (double damage dice, not flat modifiers), including optional damage groups; show the full resulting expression.
-- [ ] Preserve older presets, history and Markdown exports through schema migration.
+- [x] ~~Extend actions with optional attack expression and separately named damage groups/types.~~
+- [x] ~~Group attack, damage and critical-damage records with explicit server-validated relationship IDs.~~
+- [x] ~~Offer Damage / Critical damage after an attack; do not infer hits without target AC.~~
+- [x] ~~Define standard critical behavior (double damage dice, not flat modifiers), including optional damage groups; show the full resulting expression.~~
+- [x] ~~Preserve older presets, history and Markdown exports through schema migration.~~
 - [ ] Test a normal hit, natural 20, advantage-discarded 20 and mixed damage types.
 
 Acceptance: one saved weapon action produces a labelled attack followed by clearly linked damage; no automatic damage on a miss and no doubled flat bonus.
+
+Branch implementation 2026-09-13: linked groups, server ownership validation, critical math, per-group appearance, history and Markdown context are implemented on `feature/dice-styles-and-throw-continuity`. Final mixed-outcome acceptance remains unchecked. See DICE-STYLES-ROADMAP.md for current verification.
 
 ### 3. Temporary bonuses
 
