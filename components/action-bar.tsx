@@ -12,9 +12,26 @@ import {
   appendImport,
   moveAction,
   type ActionCollection,
+  type ActionColorMode,
   type SavedAction,
 } from '@/lib/action-profiles';
 import { PRESET_KEY } from '@/lib/dice-presets';
+
+const DEFAULT_COLOR = '#c44dff';
+const DEFAULT_COLOR2 = '#4dc4ff';
+// A small readability guard for user-chosen backgrounds - not full WCAG
+// contrast math, just enough to keep button text legible on any hue.
+function contrastText(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#12202a' : '#ffffff';
+}
+function actionStyle(a: SavedAction): React.CSSProperties | undefined {
+  if (!a.color) return undefined;
+  const background =
+    a.colorMode === 'flat' ? a.color : `linear-gradient(135deg, ${a.color}, ${a.color2 || a.color})`;
+  return { background, borderColor: a.color, color: contrastText(a.color) };
+}
 
 export default function ActionBar({
   expression,
@@ -32,6 +49,9 @@ export default function ActionBar({
   const [name, setName] = useState('');
   const [dice, setDice] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [colorMode, setColorMode] = useState<ActionColorMode | ''>('');
+  const [color, setColor] = useState(DEFAULT_COLOR);
+  const [color2, setColor2] = useState(DEFAULT_COLOR2);
   const [character, setCharacter] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [undo, setUndo] = useState<{
@@ -46,6 +66,9 @@ export default function ActionBar({
     setName('');
     setDice(null);
     setNote('');
+    setColorMode('');
+    setColor(DEFAULT_COLOR);
+    setColor2(DEFAULT_COLOR2);
     setConfirmDelete(false);
   }
   useEffect(() => {
@@ -115,7 +138,14 @@ export default function ActionBar({
   function saveAction() {
     if (!profile) return;
     try {
-      const fields = actionFields(name, dice ?? expression, note);
+      const fields = actionFields(
+        name,
+        dice ?? expression,
+        note,
+        colorMode ? color : undefined,
+        colorMode || undefined,
+        colorMode ? color2 : undefined,
+      );
       if (
         profile.actions.some(
           (a) =>
@@ -233,7 +263,8 @@ export default function ActionBar({
               <button
                 type="button"
                 key={a.id}
-                className="saved-action"
+                className={`saved-action${a.colorMode === 'sparkle' ? ' saved-action-sparkle' : ''}`}
+                style={actionStyle(a)}
                 disabled={disabled}
                 title={a.note || a.expression}
                 aria-label={`Roll ${a.name}`}
@@ -259,7 +290,12 @@ export default function ActionBar({
               {profile.actions.map((a, i) => (
                 <div className="action-edit-row" key={a.id}>
                   <span>
-                    <strong>{a.name}</strong>
+                    <strong>
+                      {a.color && (
+                        <span className="action-color-swatch" style={actionStyle(a)} aria-hidden="true" />
+                      )}
+                      {a.name}
+                    </strong>
                     <small>
                       {a.expression}
                       {a.note && ` · ${a.note}`}
@@ -294,6 +330,9 @@ export default function ActionBar({
                         setName(a.name);
                         setDice(a.expression);
                         setNote(a.note);
+                        setColorMode(a.colorMode || '');
+                        setColor(a.color || DEFAULT_COLOR);
+                        setColor2(a.color2 || DEFAULT_COLOR2);
                       }}
                     >
                       Edit
@@ -387,6 +426,50 @@ export default function ActionBar({
                   placeholder="Use while wielding two-handed"
                 />
               </label>
+              <label>
+                Button color
+                <select
+                  value={colorMode}
+                  onChange={(e) => setColorMode(e.target.value as ActionColorMode | '')}
+                >
+                  <option value="">Default</option>
+                  <option value="flat">Flat color</option>
+                  <option value="gradient">Gradient</option>
+                  <option value="sparkle">Sparkle</option>
+                </select>
+              </label>
+              {colorMode && (
+                <div className="action-color-pickers">
+                  <label>
+                    Color
+                    <input
+                      type="color"
+                      value={color}
+                      onChange={(e) => setColor(e.target.value)}
+                    />
+                  </label>
+                  {colorMode !== 'flat' && (
+                    <label>
+                      Second color
+                      <input
+                        type="color"
+                        value={color2}
+                        onChange={(e) => setColor2(e.target.value)}
+                      />
+                    </label>
+                  )}
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className={`saved-action action-color-preview${colorMode === 'sparkle' ? ' saved-action-sparkle' : ''}`}
+                    style={actionStyle({ color, color2, colorMode } as SavedAction)}
+                  >
+                    <strong>{name || 'Preview'}</strong>
+                    <small>{dice ?? expression}</small>
+                  </button>
+                </div>
+              )}
               <div className="action-tools">
                 <button type="submit">
                   {editing ? 'Save changes' : 'Add action'}

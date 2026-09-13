@@ -243,6 +243,27 @@
 .action-bar input { width:100%; min-width:0; margin:4px 0 0; background:var(--bg-input); color:var(--text); }
 .action-bar input[hidden] { display:none; }
 .action-undo, .action-delete { font-size:12px; padding:8px; background:var(--bg-input); border-radius:6px; }
+.action-color-pickers { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.action-color-pickers label { display:flex; align-items:center; gap:6px; }
+.action-color-pickers input[type=color] { width:36px; height:28px; margin:0; padding:2px; flex:none; }
+.action-color-preview { pointer-events:none; }
+/* A user-chosen background always wins over the default swatch, flat or
+   two-stop; only "sparkle" adds the animated highlight layer below. */
+.action-color-swatch { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+.action-bar button.saved-action-sparkle { position:relative; overflow:hidden; }
+.action-bar button.saved-action-sparkle::after {
+  content:''; position:absolute; inset:0; pointer-events:none; opacity:.3;
+  background:
+    radial-gradient(circle 1.5px at 18% 28%, #fff 0 90%, transparent 100%),
+    radial-gradient(circle 1.5px at 78% 22%, #fff 0 90%, transparent 100%),
+    radial-gradient(circle 1.5px at 55% 72%, #fff 0 90%, transparent 100%),
+    radial-gradient(circle 1.5px at 30% 80%, #fff 0 90%, transparent 100%),
+    radial-gradient(circle 1.5px at 88% 60%, #fff 0 90%, transparent 100%);
+  animation:saved-action-sparkle 2.6s ease-in-out infinite;
+}
+@keyframes saved-action-sparkle { 0%,100% { opacity:.2; } 50% { opacity:.9; } }
+@media(prefers-reduced-motion:reduce) { .action-bar button.saved-action-sparkle::after { animation:none; opacity:.5; } }
+.action-bar button[style]:hover { filter:brightness(1.12); }
 .rpg-hotbar .action-bar { padding:8px; }
 @media(max-width:540px) { .action-bar { padding:12px; } .action-bar select { max-width:170px; } }
 

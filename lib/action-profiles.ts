@@ -5,11 +5,15 @@ export const ACTIONS_KEY = 'rollparty:actions:v1';
 export const MAX_PROFILES = 12;
 export const MAX_ACTIONS = 30;
 export const MAX_IMPORT_BYTES = 256_000;
+export type ActionColorMode = 'flat' | 'gradient' | 'sparkle';
 export type SavedAction = {
   id: string;
   name: string;
   expression: string;
   note: string;
+  color?: string;
+  colorMode?: ActionColorMode;
+  color2?: string;
 };
 export type ActionProfile = {
   id: string;
@@ -38,17 +42,37 @@ function text(
     );
   return value.trim();
 }
+function hexColor(value: unknown, field: string): string {
+  if (typeof value !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(value))
+    throw Error(`${field} must be a #rrggbb color.`);
+  return value.toLowerCase();
+}
 export function actionFields(
   name: unknown,
   expression: unknown,
   note: unknown = '',
+  color?: unknown,
+  colorMode?: unknown,
+  color2?: unknown,
 ) {
-  return {
+  const fields: Omit<SavedAction, 'id'> = {
     name: text(name, 32, 'Action name'),
     expression: parseExpression(text(expression, 120, 'Dice expression'))
       .expression,
     note: text(note, 240, 'Reminder', true),
   };
+  // A saved action with no color keeps the default button look. Once a color
+  // is set, colorMode always resolves to a real mode (flat by default) so
+  // rendering never has to guess, and gradient/sparkle always carry a second
+  // color (falling back to the first) rather than leaving it undefined.
+  if (color !== undefined && color !== null && color !== '') {
+    fields.color = hexColor(color, 'Button color');
+    fields.colorMode =
+      colorMode === 'gradient' || colorMode === 'sparkle' ? colorMode : 'flat';
+    if (fields.colorMode !== 'flat')
+      fields.color2 = hexColor(color2 || color, 'Second button color');
+  }
+  return fields;
 }
 export function profileName(name: unknown) {
   return text(name, 40, 'Character name');
@@ -99,7 +123,7 @@ export function parseCollection(raw: string): ActionCollection {
         if (!a) throw Error('Invalid action.');
         return {
           id: id(a.id),
-          ...actionFields(a.name, a.expression, a.note ?? ''),
+          ...actionFields(a.name, a.expression, a.note ?? '', a.color, a.colorMode, a.color2),
         };
       }),
     };
