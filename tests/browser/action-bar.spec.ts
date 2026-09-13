@@ -37,7 +37,13 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
   await bar
     .getByLabel('Reminder (optional)', { exact: true })
     .fill('Two hands');
+  await bar
+    .getByRole('combobox', { name: 'Button color', exact: true })
+    .selectOption('gradient');
   await bar.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(
+    bar.getByRole('button', { name: 'Roll Longsword', exact: true }),
+  ).toHaveAttribute('style', /linear-gradient/);
   await bar
     .getByRole('button', { name: 'Move Perception up', exact: true })
     .click();
@@ -87,6 +93,9 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
   await expect(
     bar.getByRole('button', { name: 'Roll Longsword', exact: true }),
   ).toHaveAttribute('title', 'Two hands');
+  await expect(
+    bar.getByRole('button', { name: 'Roll Longsword', exact: true }),
+  ).toHaveAttribute('style', /linear-gradient/);
   await overlay
     .getByRole('button', { name: 'Roll Longsword', exact: true })
     .click();
@@ -140,7 +149,8 @@ test('characters migrate, edit, reorder, transfer and roll across browser and de
     .locator('.desktop-roll-controls')
     .boundingBox();
   const dice = await overlay.locator('.dice-panel').boundingBox();
-  expect(dice!.y).toBeGreaterThanOrEqual(controls!.y + controls!.height);
+  // The RPG-style HUD anchors the dice above the full-width hotbar, not below it.
+  expect(controls!.y).toBeGreaterThanOrEqual(dice!.y + dice!.height);
   expect(errors).toEqual([]);
 });
 

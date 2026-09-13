@@ -7,6 +7,69 @@
 - Browser acceptance is running and has not passed yet. One earlier startup run timed out because local cold start exceeded its one-second probe. `work/test-local.mjs` is a copy of the existing integration runner with AbortSignal.timeout(60000) for local warm-up. The first full browser test hit a timeout on this slow machine; inspect its trace and complete the suite. Do not remove acceptance assertions just to get green.
 - Latest edits after that build: mount previews only while expanded; preserve same-ID physics worlds on material/settings changes; show linked damage labels in roll history. Rebuild and recheck before final delivery.
 - Leave the existing deleted Word lock file unstaged. No recording, extracted frames, temporary tools or local database files belong in the commit. Original PLAY-ROADMAP remains partly planned; linked damage is being implemented as a dependency of the newly approved style work.
+## ⚠️ Merging a separate branch (ChatGPT/Codex or anyone else) into main after this
+
+If you are working on your own branch (e.g. an in-progress `claude/chatgpt-*`
+branch) and main now contains the two entries below - "custom hotbar button
+colors" and "full-screen RPG-style overlay HUD", both delivered together in
+one push to `main` on 2026-09-13 - read this before merging:
+
+- **Heavily rewritten files**: `app/page.tsx` (the entire `if (overlay) return
+  (...)` block was replaced), `app/globals.css` (the whole overlay-layout
+  section, roughly from the "Overlay mode" comment through the old
+  `@media(max-width:540px)` desktop-overlay rules, was rewritten as a CSS
+  grid), `components/action-bar.tsx` (new color-picker UI and per-button
+  inline styling), `lib/action-profiles.ts` (new optional `color`/`colorMode`/
+  `color2` fields on `SavedAction`). **Deleted**: `components/resizable-panel.tsx`
+  (the `ResizablePanel`/`ResizableTaskbar` components no longer exist -
+  if your branch imports them, drop the import and follow the new grid
+  pattern in `app/page.tsx` instead of resurrecting the file). `RollTaskbar`
+  was also removed from `components/roll-history.tsx` (only `RollHistory`
+  remains) and its `.taskbar-roll*` CSS classes are gone.
+- **If your branch touches any of those files**: don't try to keep both
+  versions of the overlay layout - the new full-screen grid HUD (dice
+  bottom-left, console log on the left, a full-width action hotbar at the
+  bottom for the interactive desktop overlay) is the intended direction going
+  forward. Reapply whatever your branch was doing on top of the new
+  structure rather than reverting it.
+- **If your branch added its own fields to `SavedAction`** (in
+  `lib/action-profiles.ts`) or its own case in `actionFields()`'s parameter
+  list: the new `color`/`colorMode`/`color2` params were appended at the end
+  of `actionFields(name, expression, note, color, colorMode, color2)` -
+  reconcile parameter order/positions rather than dropping either set of
+  fields, and re-run `tests/action-profiles.test.ts` after merging (it
+  exercises the exact expected shape).
+- **Local verification note for whoever merges**: this session ran the
+  actual Playwright browser suite locally (not just unit tests) by pointing
+  `playwright.config.ts` at the sandbox's pre-installed
+  `/opt/pw-browsers/chromium` - a local-only tweak, reverted before every
+  commit, never pushed. Do the same if you need local browser coverage; CI
+  installs its own matching version via `playwright install` regardless.
+- Full technical detail for both changes is in the two dated entries
+  immediately below.
+
+---
+
+# Current handoff - custom hotbar button colors (2026-09-13)
+
+- Follow-up on the same branch (`feature/overlay-fullscreen-redesign`): user wants each saved character action's hotbar button colorable per-action, as flat color, gradient (two colors) or an animated "sparkle" - to make individual actions stand out at a glance.
+- `lib/action-profiles.ts`: `SavedAction` gained optional `color`/`colorMode` (`'flat'|'gradient'|'sparkle'`)/`color2`. `actionFields` validates colors as strict `#rrggbb` hex; when a color is set, `colorMode` always resolves to a real value (defaults to `flat`) and gradient/sparkle always get a `color2` (falls back to `color` if not given), so rendering never has to guess. No color set = fully unchanged default look; existing saved actions and legacy-preset migrations are untouched. `parseCollection` passes the three fields through so import/export round-trips them.
+- `components/action-bar.tsx`: editor gained a "Button color" select (Default/Flat/Gradient/Sparkle) plus one or two native `<input type=color>` pickers (second only for gradient/sparkle), with a live preview swatch button. Saved-action buttons render with a computed inline `style` (flat = solid `background`, gradient/sparkle = a two-stop `linear-gradient`, always with `borderColor` and a computed black/white `color` for readability against any chosen hue - see `contrastText()`/`actionStyle()`). Sparkle adds a `saved-action-sparkle` class for a CSS-animated twinkle overlay (`app/globals.css`, respects `prefers-reduced-motion`). A small color swatch was also added next to the name in the "Manage actions" edit list for at-a-glance feedback while editing.
+- Validation: added unit tests in `tests/action-profiles.test.ts` for hex validation and the flat/gradient/sparkle defaulting and round-trip; extended `tests/browser/action-bar.spec.ts` to set a gradient on the edited "Longsword" action and assert the rendered button's inline style contains the gradient, both before and after an export/import round-trip. 28 unit tests, TypeScript, production build and the full `action-bar.spec.ts` browser spec all pass (isolated run, matching this session's established pattern of pre-existing sandbox flakiness on the *unrelated* lobby-practice-dice test - see the entry below). `pnpm run lint` still has the repo's pre-existing unrelated errors (untouched files) but nothing new from the files this entry touched.
+- Not done: no gradient/sparkle presets beyond a sensible default purple/blue; no color option on the free-form quick-roll button or the main browser page's dice-picker buttons (scoped to saved/hotbar actions only, per the request).
+
+---
+
+# Current handoff - full-screen RPG-style overlay HUD (2026-09-13)
+
+- User requested a bigger redesign of the interactive desktop overlay (`overlay=1&desktop=1`, the window shown over Miro/streams): stop stacking the dice/console/controls in one small corner with wasted space below them, and use the full window instead - big dice in the bottom-left corner, a console/roll log on the left, and an action hotbar (saved character actions) spanning the full width at the bottom, RPG-HUD style. Branch: `feature/overlay-fullscreen-redesign`, based on main at `3fd7640`. Not requested to push to main; left as a feature branch.
+- `app/page.tsx`'s overlay return is now one CSS grid (`.overlay-root`): a left column (`.rpg-left`) holding the console/log then the dice panel stacked in a flex column - so the dice naturally lands at the bottom of that column with no hand-computed pixel offsets - and, only in the interactive desktop overlay, a full-width bottom row (`.rpg-hotbar`) holding the free-roll controls plus `ActionBar` styled as a hotbar. An empty grid row (no drag bar/hotbar child, i.e. the plain non-desktop OBS-overlay/spectator view) collapses to zero height on its own, so the same markup serves both. The center/right of the screen is left empty and transparent so the board/stream behind the overlay stays visible.
+- Removed the old independently-resizable-panel system (`components/resizable-panel.tsx`, `ResizablePanel`/`ResizableTaskbar`) and the bottom roll-history ticker (`RollTaskbar`/`.taskbar-roll*`) in favor of the fixed HUD layout and the existing richer `RollHistory` log (reused from the main browser page) for the left-column console. The desktop "Show roll history" toggle (`desktop/main.cjs`'s `applyHistory()`, unchanged) still works - the `.overlay-taskbar` class it hides now wraps just the roll-log portion of the console panel, not the connection status.
+- The hotbar is capped at `max-height:42vh` with internal scroll (matching the old controls box), since without a cap an expanded "Manage actions" editor could grow tall enough to squeeze/overlap the dice column above it - caught via a real Playwright bounding-box assertion, not just visually.
+- Dice "bigness" comes entirely from the new CSS box size (up to ~360px/34vw square), not from `DiceStage`'s `sizeMultiplier`, which stayed at the original `desktop ? 2 : 1` - that value is also the physical `diceScale` sent to the server for a starting-die throw, and the server whitelists only `[1.5, 2]` for that action (`app/api/session/route.ts`). An earlier attempt to bump it for a "bigger" look broke starting-die throws with a server-side "Invalid starting die size." 400 - caught by `tests/browser/starting-die.spec.ts`, not by unit tests or typecheck.
+- Updated `tests/browser/roller.spec.ts` and `tests/browser/action-bar.spec.ts` for the new layout: the recorded-roll assertion now checks `.roll-entry` (was `.taskbar-roll`), and the dice/hotbar bounding-box check now expects the hotbar below the dice (was: dice below the controls).
+- Validation: 27 web unit tests, TypeScript and production build pass. Local Wrangler + D1 integration worked in this sandbox (unlike some earlier sessions) once Playwright was pointed at the pre-installed `/opt/pw-browsers/chromium` (a local-only `playwright.config.ts` tweak, not committed - CI already runs its own matching `playwright install`). All 5 Playwright browser specs pass in isolation; running the full suite back-to-back in this resource-constrained sandbox intermittently flakes on the two physics-drag tests that predate this branch and don't touch overlay code (`roller.spec.ts`'s lobby-practice-dice test and `starting-die.spec.ts`'s non-desktop variant) - reproduced identically against unmodified `main`, so treated as pre-existing local sandbox flakiness, not a regression. Desktop Electron unit tests and a Windows portable build were not run locally in this session; CI covers those.
+- Not done: no PR opened (not requested). Feedback on the exact hotbar/dice/log proportions is expected - this is a first pass at the requested structure, easy to tune further (column width, dice size caps, hotbar max-height) once seen live.
 
 ---
 
@@ -15,7 +78,12 @@
 - User requested that throwing the ready d20 creates a normal roll, plus subtle version text on the start screen and table, then push to main.
 - Ready-die releases use the existing authenticated throw endpoint with explicit null parent, fixed 1d20 notation and validated release/scale/bounds. Normal ingestion supplies shared history, player identity, replay and result sounds. Existing rethrows continue to use their recorded parent. Pending throws prevent overlapping drags.
 - Start-screen practice rolls also use the shared result cue. Practice history remains local. Version 0.7.1 is shown below the shared header and in the desktop title bar; web and desktop package versions match.
-- Local checks: 27 web unit tests, 7 desktop tests, TypeScript and production build passed. Local Wrangler integration is blocked by uv_interface_addresses. Added CI browser regressions for starting-die throws in browser/desktop and API coverage for physical results, duplicates, rethrows and malformed releases. CI and production verification pending at commit time.
+- Local checks: 27 web unit tests, 7 desktop tests, TypeScript and production build passed. Local Wrangler integration is blocked by uv_interface_addresses. Added CI browser regressions for starting-die throws in browser/desktop and API coverage for physical results, duplicates, rethrows and malformed releases.
+- **CI/production status as of 2026-09-13 ~13:45 UTC (Claude, follow-up session)**: main HEAD `3fd7640` ("Record starting d20 throws and show app version 0.7.1") itself needs no further code changes - the blocker is entirely in the release/deploy pipeline for that commit, [run 34748689399](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/actions/runs/34748689399):
+  - Attempt 1: "Browser and Worker" job failed fast (~1m19s); other jobs didn't get far.
+  - Attempt 3: "Browser and Worker", "Portable Windows EXE" both passed (tests/typecheck/build/browser tests/portable EXE launch all green). "Publish portable release" failed with `HTTP 500` from `https://api.github.com/repos/.../releases` inside `gh release view`/`gh release create` - a transient GitHub-side error, not a code or workflow bug. Because that job failed, "Update live Cloudflare site" was skipped, so **production deployment for this commit is still unverified**.
+  - Attempt 4 was queued (presumably re-triggered by the prior session right before it ran out of budget) and has been stuck in `status: queued` with zero jobs created for 4.5+ hours as of this check. The GitHub API refuses to help unwedge it from here: `cancel_workflow_run` returns `409 Cannot cancel a workflow run that has not been queued yet`, and `rerun_failed_jobs` returns `403 This workflow is already running` - both claim the run is active, but no job records exist. This looks like a wedged/never-dispatched run, possibly an account-level Actions concurrency or spend limit rather than anything in this repo's code.
+  - **Next agent/user action**: check the run directly at the link above and in the repo's Settings -> Actions (billing/usage limits, concurrency). If it's still wedged, either wait it out, or push an empty/trivial commit to force a fresh run number (last resort - avoid unless attempt 4 is confirmed dead), or ask the user to manually cancel/re-run from the GitHub UI (which has options this API token apparently doesn't). Once a clean run completes, confirm both the GitHub Release (`desktop-v0.7.1-build.<N>`) contains the EXE and the "Update live Cloudflare site" job actually deployed, then update this entry.
 
 ---
 

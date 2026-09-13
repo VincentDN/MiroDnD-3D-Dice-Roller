@@ -2,8 +2,10 @@
 import { Dices } from 'lucide-react';
 import type { Roll } from '@/lib/dice';
 function linkedLabel(roll: Roll, history: Roll[]) {
-  const attack=history.find(r=>r.id===roll.linkedTo);
-  return roll.linkedTo ? `Damage for ${attack?.label || attack?.expression || 'earlier attack'}` : '';
+  const attack = history.find((r) => r.id === roll.linkedTo);
+  return roll.linkedTo
+    ? `Damage for ${attack?.label || attack?.expression || 'earlier attack'}`
+    : '';
 }
 
 export function RollHistory({ history }: { history: Roll[] }) {
@@ -22,36 +24,40 @@ export function RollHistory({ history }: { history: Roll[] }) {
           .map((r) => (
             <article key={r.id} className="roll-entry">
               <div className="roll-sentence">
-                <strong style={{color:r.color}}>{r.name}</strong>{' '}rolls{' '}
-                <code>{r.expression}</code>{' = '}
-                <span className="roll-values">{r.dice.map((d,i)=><span key={i} className={!d.kept?'discarded':''} aria-label={!d.kept?`${d.value}, discarded`:undefined}>{i?' + ':''}{d.value}</span>)}
-                {r.modifier!==0 ? (r.modifier>0?' + ':' − ')+Math.abs(r.modifier):''}</span>
-                {' = '}<b className="roll-total">{r.total}</b>
+                <strong style={{ color: r.color }}>{r.name}</strong> rolls{' '}
+                <code>{r.expression}</code>
+                {' = '}
+                <span className="roll-values">
+                  {r.dice.map((d, i) => (
+                    <span
+                      key={i}
+                      className={!d.kept ? 'discarded' : ''}
+                      aria-label={!d.kept ? `${d.value}, discarded` : undefined}
+                    >
+                      {i ? ' + ' : ''}
+                      {d.value}
+                    </span>
+                  ))}
+                  {r.modifier !== 0
+                    ? (r.modifier > 0 ? ' + ' : ' − ') + Math.abs(r.modifier)
+                    : ''}
+                </span>
+                {' = '}
+                <b className="roll-total">{r.total}</b>
               </div>
-              <div className="roll-meta">{r.label&&<span>{r.label}</span>}{r.linkedTo&&<span>{linkedLabel(r,history)}</span>}{r.parent&&r.label!=="Mouse throw"&&<span>Mouse throw</span>}<time>{new Date(r.created).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</time></div>
-            </article>
-          ))
-      )}
-    </div>
-  );
-}
-
-export function RollTaskbar({ history }: { history: Roll[] }) {
-  return (
-    <div className="taskbar-rolls" aria-live="polite">
-      {history.length === 0 ? (
-        <div className="taskbar-empty">
-          <Dices size={18} /> No rolls yet.
-        </div>
-      ) : (
-        [...history]
-          .reverse()
-          .map((r) => (
-            <article key={r.id} className="taskbar-roll">
-              <span className="taskbar-roll-name" style={{ color: r.color }}>{r.name}</span>
-              <span className="taskbar-roll-expr">{r.expression}{r.label&&<small style={{display:'block'}}>{r.label}</small>}{r.linkedTo&&<small style={{display:'block'}}>{linkedLabel(r,history)}</small>}</span>
-              <b className="taskbar-roll-total">{r.total}</b>
-              <time>{new Date(r.created).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
+              <div className="roll-meta">
+                {r.label && <span>{r.label}</span>}
+                {r.linkedTo && <span>{linkedLabel(r, history)}</span>}
+                {r.parent && r.label !== 'Mouse throw' && (
+                  <span>Mouse throw</span>
+                )}
+                <time>
+                  {new Date(r.created).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </time>
+              </div>
             </article>
           ))
       )}

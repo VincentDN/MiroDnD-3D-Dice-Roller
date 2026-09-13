@@ -52,14 +52,15 @@ test('browser and desktop overlay share a room, render dice and retain settings'
   await expect(overlay.locator('html')).toHaveAttribute('data-theme', 'miro-light');
   await overlay.getByRole('textbox', { name: 'Dice notation' }).fill('1d20');
   await overlay.getByRole('button', { name: 'Roll', exact: true }).click();
-  await expect(overlay.locator('.taskbar-roll').first()).toContainText('Browser ranger');
+  await expect(overlay.locator('.roll-entry').first()).toContainText('Browser ranger');
   await expect(page.locator('.roll-entry').first()).toContainText('Browser ranger');
   await expect(overlay.locator('.dice-panel canvas')).toBeVisible();
   await expect(overlay.locator('.desktop-result')).toContainText('=', { timeout: 20000 });
   await expect(overlay.locator('.render-error')).toHaveCount(0);
   const controls = await overlay.locator('.desktop-roll-controls').boundingBox();
   const dice = await overlay.locator('.dice-panel').boundingBox();
-  expect(dice!.y).toBeGreaterThanOrEqual(controls!.y + controls!.height);
+  // The RPG-style HUD anchors the dice above the full-width hotbar, not below it.
+  expect(controls!.y).toBeGreaterThanOrEqual(dice!.y + dice!.height);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: /Drakkenheim/ }).click();
   await expect(overlay.locator('html')).toHaveAttribute('data-theme', 'drakkenheim');

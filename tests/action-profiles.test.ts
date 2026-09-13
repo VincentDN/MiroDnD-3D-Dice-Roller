@@ -107,3 +107,45 @@ void test('reordering keeps actions intact and handles boundary moves without lo
     note: 'Two hands',
   });
 });
+void test('action button colors default to flat, gradient/sparkle fall back to a single color, and bad hex is rejected', () => {
+  assert.deepEqual(actionFields('Sword', '1d20+5', '', '#C44DFF'), {
+    name: 'Sword',
+    expression: '1d20+5',
+    note: '',
+    color: '#c44dff',
+    colorMode: 'flat',
+  });
+  assert.deepEqual(
+    actionFields('Sword', '1d20+5', '', '#c44dff', 'gradient'),
+    {
+      name: 'Sword',
+      expression: '1d20+5',
+      note: '',
+      color: '#c44dff',
+      colorMode: 'gradient',
+      color2: '#c44dff',
+    },
+  );
+  assert.equal(
+    actionFields('Sword', '1d20+5', '', '#c44dff', 'sparkle', '#4dc4ff')
+      .color2,
+    '#4dc4ff',
+  );
+  assert.throws(
+    () => actionFields('Sword', '1d20+5', '', 'purple'),
+    /#rrggbb/,
+  );
+  assert.throws(
+    () => actionFields('Sword', '1d20+5', '', '#c44dff', 'gradient', 'nope'),
+    /#rrggbb/,
+  );
+  const current = loadCollection(null, legacy);
+  current.profiles[0].actions[0] = {
+    ...current.profiles[0].actions[0],
+    ...actionFields('Sword', '1d20+5', '', '#c44dff', 'sparkle'),
+  };
+  assert.deepEqual(
+    parseCollection(JSON.stringify(current)).profiles[0].actions[0],
+    current.profiles[0].actions[0],
+  );
+});

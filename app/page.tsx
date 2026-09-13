@@ -23,9 +23,8 @@ import DiceStage from '@/components/dice-stage';
 import IntroDice from '@/components/intro-dice';
 import AppVersion from '@/components/app-version';
 import RollNotebook from '@/components/roll-notebook';
-import { RollHistory, RollTaskbar } from '@/components/roll-history';
+import { RollHistory } from '@/components/roll-history';
 import SettingsPanel, { useSettings } from '@/components/settings-panel';
-import { ResizablePanel, ResizableTaskbar } from '@/components/resizable-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion, TableBounds } from '@/lib/dice-physics';
 import ActionBar from '@/components/action-bar';
@@ -62,7 +61,6 @@ export default function Home() {
   const [sound, setSound] = useState(true);
   const [fresh, setFresh] = useState(false);
   const [settledId, setSettledId] = useState('');
-  const [taskbarHeight, setTaskbarHeight] = useState(110);
   useEffect(()=> {
     const sync=()=> { let value=true;try {value=localStorage.getItem('rollparty:sound')!=='off';}catch {} setSound(value);setSoundEnabled(value); };
     sync();unlockSound();
@@ -369,62 +367,48 @@ export default function Home() {
       <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
         {settingsPanel}
         {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <AppVersion /><span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
-        {desktop && <section className="desktop-roll-controls">
+        <div className="rpg-left">
+          <div className="console-panel">
+            <div className="console-head">
+              <Dices size={16} /> VincentsVibeRoller{' '}
+              <span className={connected ? 'live' : 'offline'}>
+                {connected ? 'LIVE' : 'CONNECTING'}
+              </span>
+            </div>
+            {error && (
+              <p role="alert" className="error">
+                {error}
+              </p>
+            )}
+            <div className="overlay-taskbar">
+              <RollHistory history={history} />
+            </div>
+            {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
+          </div>
+          <div className="dice-panel">
+            <RollReveal roll={active} settledId={settledId} fresh={fresh} mode={settings.reveal}/>
+            {(active || desktop) && <DiceStage reducedEffects={settings.reducedEffects} pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
+          </div>
+        </div>
+        {desktop && <section className="rpg-hotbar desktop-roll-controls">
           {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
             <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
             <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
           </form> : <>
-            <div className="desktop-dice-picker">{soundButton}{settingsButton}{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
-            <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
-              <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
-              <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
-            </form>
+            <div className="rpg-hotbar-top">
+              {soundButton}{settingsButton}
+              <div className="desktop-dice-picker">{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
+              <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
+                <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
+                <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
+              </form>
+              <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
+            </div>
+            <ActionBar expression={expression} disabled={busy || !connected}
+              color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
           </>}
-          {cred && <ActionBar expression={expression} disabled={busy || !connected}
-            color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />}
-          <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
           <small>Drag to move. Throw firmly to record a new roll.</small>
         </section>}
-        <div className="overlay-panels">
-        <ResizablePanel
-          storageKey="rollparty:panel-dice"
-          className="overlay-panel dice-panel"
-          defaultWidth={desktop ? 360 : 320} defaultHeight={desktop ? 300 : 260}
-          minWidth={220} minHeight={200}
-          style={{ top: desktop ? 140 : 16, maxHeight: `calc(100vh - ${taskbarHeight + (desktop ? 156 : 32)}px)` }}
-        >
-          <RollReveal roll={active} settledId={settledId} fresh={fresh} mode={settings.reveal}/>{(active || desktop) && <DiceStage reducedEffects={settings.reducedEffects} pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
-        </ResizablePanel>
-        <ResizablePanel
-          storageKey="rollparty:panel-console"
-          className="overlay-panel console-panel"
-          defaultWidth={260} defaultHeight={150}
-          minWidth={180} minHeight={90}
-          style={{ top: desktop ? 140 : 16, maxHeight: `calc(100vh - ${taskbarHeight + (desktop ? 156 : 32)}px)` }}
-        >
-          <div className="console-head">
-            <Dices size={16} /> VincentsVibeRoller{' '}
-            <span className={connected ? 'live' : 'offline'}>
-              {connected ? 'LIVE' : 'CONNECTING'}
-            </span>
-          </div>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
-        </ResizablePanel>
-        </div>
-        <ResizableTaskbar
-          storageKey="rollparty:panel-rolls-height"
-          defaultHeight={110}
-          minHeight={64}
-          className="overlay-taskbar"
-          onHeightChange={setTaskbarHeight}
-        >
-          <RollTaskbar history={history}/>
-        </ResizableTaskbar>
       </main>
     );
   return (
