@@ -1,7 +1,7 @@
 {
   "name": "rollparty-desktop",
   "productName": "VincentsVibeRoller",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Transparent, interactive D&D dice over Miro and other desktop apps",
   "author": "Vincent De Nil",
   "license": "MIT",
@@ -21,7 +21,7 @@
   "build": {
     "appId": "com.rollparty.desktop",
     "productName": "VincentsVibeRoller",
-    "copyright": "Copyright \u00a9 Vincent De Nil",
+    "copyright": "Copyright © Vincent De Nil",
     "asar": false,
     "files": [
       "*.cjs",

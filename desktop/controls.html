@@ -11,7 +11,7 @@
 <body>
   <header><img src="icon.png" width="40" height="40" alt=""><div><h1>VincentsVibeRoller Desktop</h1><p>Dice over Miro</p></div></header>
   <main>
-    <p class="intro">Roll and drag dice directly in the floating window. Move it by its header and resize it from the lower-right grip. Click outside it to use Miro.</p>
+    <p class="intro">Two synced windows: roll from the hotbar, watch the table and console. The table passes clicks through to Miro by default. Choose Interact with table to drag dice, move or resize the table, or scroll its console.</p>
     <button id="roller" class="primary">Create a room / open roller</button>
     <form id="join">
       <label for="link">Or paste your party’s invite link</label>
@@ -21,7 +21,8 @@
       <label for="display">Monitor with Miro</label>
       <select id="display" aria-label="Monitor with Miro"></select>
       <label class="check"><input id="visible" type="checkbox" checked>Show dice over other apps</label>
-      <label class="check"><input id="history" type="checkbox">Show recent roll results below the dice</label>
+      <label class="check"><input id="history" type="checkbox">Show roll console history</label>
+      <label class="check"><input id="table-interactive" type="checkbox">Interact with table (disable click-through)</label>
     </div>
     <div class="settings">
       <label>Roll notebook save folder</label>
@@ -31,7 +32,7 @@
     <p id="status" role="status">Create or join a room to start.</p>
     <p id="error" role="alert" hidden></p>
     <button id="retry" class="text">Reconnect</button>
-    <p class="hint">Use the floating window’s dice buttons and Roll control. Your party’s new rolls appear automatically. The separate room window has the full history and profile settings.</p>
+    <p class="hint">The hotbar stays clickable while the table lets you use Miro underneath. Move each window by its header; resize from its lower-right corner. Your party’s new rolls appear automatically. The separate room window has the full history and profile settings.</p>
     <details><summary>Keyboard shortcuts</summary><ul id="shortcuts"></ul></details>
   </main>
   <footer><span>Closing this panel keeps the dice running.</span><button id="quit" class="text">Quit</button></footer>

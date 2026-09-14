@@ -2,11 +2,12 @@ const { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, session
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
-const { SITE_ORIGIN, isRoomSite, roomKey, roomURL, lowerLeftBounds } = require('./config.cjs');
+const { SITE_ORIGIN, isRoomSite, roomKey, roomURL, overlayBounds } = require('./config.cjs');
 
 const panelURL = pathToFileURL(path.join(__dirname, 'controls.html')).href;
 const overlayCSS = fs.readFileSync(path.join(__dirname, 'overlay.css'), 'utf8');
-let panel, room, overlay, tray;
+let panel, room, overlay, hotbar, tray;
+let tableInteractive = false;
 let key = '', displayId, visible = true, history = true, quitting = false;
 let overlayReady = false, overlayError = '', historyCSS, navigation = 0;
 let savePath = '';
@@ -30,7 +31,7 @@ function saveSettings() {
 
 function state() {
   return {
-    hasRoom: Boolean(key), visible, history, displayId, overlayReady, error: overlayError,
+    hasRoom: Boolean(key), visible, history, tableInteractive, displayId, overlayReady, error: overlayError,
     savePath, shortcuts,
     displays: screen.getAllDisplays().map((d, i) => ({
       id: d.id, label: `${d.label || `Monitor ${i + 1}`} (${d.bounds.width} × ${d.bounds.height})`,
@@ -41,10 +42,15 @@ function broadcast() {
   // The overlay is the audible window while visible; avoid two copies of each cue.
   if(room && !room.isDestroyed())room.webContents.setAudioMuted(Boolean(key && visible && overlayReady));
   if(overlay && !overlay.isDestroyed())overlay.webContents.setAudioMuted(!visible);
+  if(hotbar && !hotbar.isDestroyed()) {
+    hotbar.webContents.setAudioMuted(true);
+    hotbar.webContents.send('overlay:interaction-state', tableInteractive);
+  }
   if (panel && !panel.isDestroyed()) panel.webContents.send('desktop:state', state());
   if (tray) tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Roll dice / open room', click: showRoom },
     { label: 'Desktop controls', click: showPanel },
+    { label: 'Interact with dice table', type: 'checkbox', checked: tableInteractive, click: item => setTableInteractive(item.checked) },
     { label: 'Show dice over Miro', type: 'checkbox', checked: visible, click: (item) => setVisible(item.checked) },
     { type: 'separator' },
     { label: 'Quit VincentsVibeRoller', click: () => app.quit() },
@@ -54,23 +60,34 @@ function showPanel() { panel.show(); panel.focus(); }
 function positionOverlay(reset = false) {
   const display = screen.getAllDisplays().find((d) => d.id === displayId) || screen.getPrimaryDisplay();
   displayId = display.id;
-  if (overlay && !overlay.isDestroyed()) {
-    const b = reset === true ? lowerLeftBounds(display.workArea) : overlay.getBounds();
+  for (const [win, surface] of [[overlay,'table'],[hotbar,'hotbar']]) {
+    if (!win || win.isDestroyed()) continue;
+    const b = reset === true ? overlayBounds(display.workArea, surface) : win.getBounds();
     const a = display.workArea;
     b.width = Math.min(b.width, a.width); b.height = Math.min(b.height, a.height);
     b.x = Math.min(Math.max(b.x, a.x), a.x+a.width-b.width);
     b.y = Math.min(Math.max(b.y, a.y), a.y+a.height-b.height);
-    overlay.setBounds(b);
+    win.setBounds(b);
   }
   broadcast();
 }
 function setVisible(next) {
   visible = next;
-  if (overlay && !overlay.isDestroyed()) {
-    if (visible && key && overlayReady) overlay.showInactive();
-    else overlay.hide();
+  for (const win of [overlay,hotbar]) {
+    if (!win || win.isDestroyed()) continue;
+    if (visible && key && overlayReady) win.showInactive();
+    else win.hide();
   }
   broadcast();
+}
+function setTableInteractive(value) {
+  tableInteractive = value;
+  overlay.setIgnoreMouseEvents(!value);
+  overlay.setFocusable(value);
+  broadcast();
+}
+function overlaySender(event, win) {
+  return win && event.sender === win.webContents && event.senderFrame === win.webContents.mainFrame && isRoomSite(event.senderFrame.url);
 }
 function secureRemote(win) {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -103,14 +120,16 @@ async function loadOverlay() {
   overlayReady = false;
   overlayError = '';
   historyCSS = undefined;
-  overlay.hide();
+  overlay.hide(); hotbar.hide();
   broadcast();
   try {
-    await overlay.loadURL(roomURL(key, true));
+    await Promise.all([overlay.loadURL(roomURL(key, true, 'table')), hotbar.loadURL(roomURL(key, true, 'hotbar'))]);
     if (attempt !== navigation || quitting) return;
-    await overlay.webContents.insertCSS(overlayCSS);
+    await Promise.all([overlay.webContents.insertCSS(overlayCSS), hotbar.webContents.insertCSS(overlayCSS)]);
+    if (attempt !== navigation || quitting) return;
     overlayReady = true;
     await applyHistory();
+    if (attempt !== navigation || quitting) return;
     setVisible(visible);
   } catch {
     if (attempt !== navigation || quitting) return;
@@ -130,9 +149,10 @@ function followRoom(url) {
     ++navigation;
     overlayReady = false;
     overlayError = '';
-    overlay.hide();
+    overlay.hide(); hotbar.hide();
     // Stop polling the previous room after leaving it.
     void overlay.loadURL('about:blank').catch(() => {});
+    void hotbar.loadURL('about:blank').catch(() => {});
     broadcast();
   }
 }
@@ -204,31 +224,40 @@ else {
       if (!quitting && tray) { event.preventDefault(); panel.hide(); }
       else if (!quitting) app.quit();
     });
-    overlay = new BrowserWindow({ ...lowerLeftBounds(screen.getPrimaryDisplay().workArea),
-      title: 'VincentsVibeRoller dice overlay', transparent: true, frame: false,
-      backgroundColor: '#00000000', alwaysOnTop: true, hasShadow: false,
-      focusable: true, skipTaskbar: true, resizable: true, movable: true,
-      minWidth: 340, minHeight: 320,
-      show: false, webPreferences: { ...remotePreferences(), preload: path.join(__dirname, 'overlay-preload.cjs') } });
-    overlay.setAlwaysOnTop(true, 'screen-saver');
-    overlay.setIgnoreMouseEvents(false);
-    overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    secureRemote(overlay);
-    overlay.on('moved', () => { displayId = screen.getDisplayMatching(overlay.getBounds()).id; broadcast(); });
-    overlay.webContents.on('render-process-gone', () => {
-      overlayReady = false; overlay.hide();
-      overlayError = 'The dice window stopped. Choose Reconnect to reopen it.'; broadcast();
+    function floatingWindow(surface) {
+      const win = new BrowserWindow({ ...overlayBounds(screen.getPrimaryDisplay().workArea, surface),
+        title: `VincentsVibeRoller ${surface === 'table' ? 'dice table' : 'hotbar'}`,
+        transparent:true, frame:false, backgroundColor:'#00000000', alwaysOnTop:true, hasShadow:false,
+        focusable:surface === 'hotbar', skipTaskbar:true, resizable:true, movable:true,
+        minWidth:340, minHeight:surface === 'table' ? 320 : 180, show:false,
+        webPreferences:{...remotePreferences(), preload:path.join(__dirname,'overlay-preload.cjs')} });
+      win.setAlwaysOnTop(true,'screen-saver');
+      win.setIgnoreMouseEvents(surface === 'table');
+      win.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+      secureRemote(win);
+      win.on('close', event => { if(!quitting) {event.preventDefault();setVisible(false);} });
+      win.on('moved', () => {displayId=screen.getDisplayMatching(win.getBounds()).id;broadcast();});
+      win.webContents.on('render-process-gone', () => {
+        ++navigation; overlayReady=false; overlay.hide(); hotbar.hide();
+        overlayError='A floating window stopped. Choose Reconnect to reopen both windows.';broadcast();
+      });
+      return win;
+    }
+    overlay=floatingWindow('table');
+    hotbar=floatingWindow('hotbar');
+    ipcMain.on('overlay:interaction', (event, value) => {
+      if(overlaySender(event,hotbar) && typeof value === 'boolean')setTableInteractive(value);
     });
-    ipcMain.on('overlay:resize', (event, width, height) => {
-      if (event.sender !== overlay.webContents || event.senderFrame !== overlay.webContents.mainFrame || !isRoomSite(event.senderFrame.url)) return;
-      if (!Number.isFinite(width) || !Number.isFinite(height)) return;
-      const area = screen.getDisplayMatching(overlay.getBounds()).workArea;
-      const b = overlay.getBounds();
-      b.width = Math.min(area.width, Math.max(340, Math.round(width)));
-      b.height = Math.min(area.height, Math.max(320, Math.round(height)));
-      b.x = Math.min(Math.max(b.x, area.x), area.x+area.width-b.width);
-      b.y = Math.min(Math.max(b.y, area.y), area.y+area.height-b.height);
-      overlay.setBounds(b);
+    ipcMain.on('overlay:state', event => {if(overlaySender(event,hotbar))broadcast();});
+    ipcMain.on('overlay:resize', (event,width,height) => {
+      const win=[overlay,hotbar].find(candidate=>overlaySender(event,candidate));
+      if(!win || !Number.isFinite(width) || !Number.isFinite(height))return;
+      const area=screen.getDisplayMatching(win.getBounds()).workArea, b=win.getBounds();
+      b.width=Math.min(area.width,Math.max(340,Math.round(width)));
+      b.height=Math.min(area.height,Math.max(win===hotbar?180:320,Math.round(height)));
+      b.x=Math.min(Math.max(b.x,area.x),area.x+area.width-b.width);
+      b.y=Math.min(Math.max(b.y,area.y),area.y+area.height-b.height);
+      win.setBounds(b);
     });
     createRoom();
     handle('desktop:state', state);
@@ -246,6 +275,10 @@ else {
     handle('desktop:visible', (value) => {
       if (typeof value !== 'boolean') throw new Error('Invalid visibility.');
       setVisible(value);
+    });
+    handle('desktop:table-interactive', value => {
+      if(typeof value !== 'boolean')throw new Error('Invalid table interaction.');
+      setTableInteractive(value);
     });
     handle('desktop:history', async (value) => {
       if (typeof value !== 'boolean') throw new Error('Invalid history setting.');
@@ -277,6 +310,7 @@ else {
     for (const event of ['display-added', 'display-removed', 'display-metrics-changed']) screen.on(event, positionOverlay);
     for (const [label, accelerator, action] of [
       ['Show / hide dice', 'CommandOrControl+Shift+D', () => setVisible(!visible)],
+      ['Toggle table interaction', 'CommandOrControl+Shift+T', () => setTableInteractive(!tableInteractive)],
       ['Open roller', 'CommandOrControl+Shift+R', showRoom],
       ['Desktop controls', 'CommandOrControl+Shift+O', showPanel],
     ]) shortcuts.push({ label, accelerator, available: globalShortcut.register(accelerator, action) });

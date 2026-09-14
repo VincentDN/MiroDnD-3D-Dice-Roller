@@ -21,3 +21,14 @@ The recording was inspected at 2 fps, then 10 fps around 16 seconds. At 16.0–1
 Regression control: temporarily disabling continuation produced a 55.7-pixel frame jump and failed the delayed-response browser test. The restored fix passes the same regression. Input spans rendered frames, and poll responses are held back so they cannot mask the delayed acknowledgement. This checks 24 displayed frames after the delayed response, rather than only checking the final total.
 
 Implemented features retain Claude’s RPG HUD and independent button colors. TypeScript, 32 web unit tests, 7 desktop unit tests, production build and local D1/API checks pass. All nine browser tests pass across the full eight-test run and supplemental queue/maximum-pool test. Coverage includes Claude’s button-color import/export and HUD layout; style/linked-damage viewer parity; all seven previews and five materials; inheritance/reset/reusable styles; full/subtle/off reveal, discarded dice, reduced motion, history reload and queue order; mobile width; and eighty physical dice. Enlarged preview was rebuilt, retested and visually inspected. Desktop checks cover the overlay in Chromium and seven Electron unit tests; a fresh portable EXE was not built in this branch. No feature branch changes have been merged into main or deployed. Keep the unrelated Word lock-file deletion unstaged.
+
+## Desktop follow-up — completed 2026-09-14, v0.7.2
+
+User authorized merging with Claude’s redesign and delivering to main, superseding the branch-only restriction above.
+
+- [x] ~~Separate synced hotbar and table/console windows, preserving saved actions, dice styles and reveals.~~
+- [x] ~~Restore native table click-through by default; add hotbar, controls, tray and keyboard toggles for table interaction.~~
+- [x] ~~Handle paired visibility/reconnect, monitor bounds, renderer failure and single-window sound.~~
+- [x] ~~Verify browser synchronization, native Windows click-through/focus and portable EXE launch; update usage instructions.~~
+
+Verified locally: 32 web unit tests, 8 desktop tests, 10 browser tests, typecheck/build, real Electron native flag/toggle/roll checks, Windows portable packaging and EXE smoke test. Main’s release/deployment pipeline still needs its post-push result checked.

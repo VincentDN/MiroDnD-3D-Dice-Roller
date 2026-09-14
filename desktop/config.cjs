@@ -14,9 +14,9 @@ function roomKey(raw) {
   return key;
 }
 
-function roomURL(key, overlay = false) {
+function roomURL(key, overlay = false, surface = '') {
   if (!/^[a-f0-9]{64}$/.test(key)) throw new Error('Invalid room key.');
-  return `${SITE_ORIGIN}/#${new URLSearchParams({ room: key, ...(overlay ? { overlay: '1', desktop: '1' } : {}) })}`;
+  return `${SITE_ORIGIN}/#${new URLSearchParams({ room: key, ...(overlay ? { overlay: '1', desktop: '1', ...(['table','hotbar'].includes(surface) ? {surface} : {}) } : {}) })}`;
 }
 
 // Electron screen coordinates are device-independent pixels, including on mixed-DPI monitors.
@@ -26,4 +26,11 @@ function lowerLeftBounds(workArea) {
   return { x: workArea.x, y: workArea.y + workArea.height - height, width, height };
 }
 
-module.exports = { SITE_ORIGIN, isRoomSite, roomKey, roomURL, lowerLeftBounds };
+function overlayBounds(area, surface) {
+  const hotbarHeight = Math.min(280, Math.round(area.height * .35));
+  const width = Math.min(surface === 'hotbar' ? 1000 : 420, area.width);
+  const height = surface === 'hotbar' ? hotbarHeight : Math.min(640, area.height - hotbarHeight);
+  return {x:area.x, y:area.y + area.height - height - (surface === 'table' ? hotbarHeight : 0), width, height};
+}
+
+module.exports = { SITE_ORIGIN, isRoomSite, roomKey, roomURL, lowerLeftBounds, overlayBounds };

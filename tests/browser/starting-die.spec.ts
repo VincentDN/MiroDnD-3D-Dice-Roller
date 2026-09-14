@@ -1,3 +1,4 @@
+import {version} from '../../package.json';
 import { test, expect } from '@playwright/test';
 
 for (const desktop of [false, true]) {
@@ -6,7 +7,7 @@ for (const desktop of [false, true]) {
     context,
   }) => {
     await page.goto('/');
-    await expect(page.locator('.app-version')).toHaveText('v0.7.1');
+    await expect(page.locator('.app-version')).toHaveText(`v${version}`);
     await page.getByPlaceholder('Dungeon Master').fill('First throw');
     await page.getByRole('button', { name: /Create a room/ }).click();
     await expect(
@@ -18,7 +19,7 @@ for (const desktop of [false, true]) {
       await page.setViewportSize({ width: 680, height: 760 });
       await page.goto(page.url() + '&overlay=1&desktop=1');
     }
-    await expect(page.locator('.app-version')).toHaveText('v0.7.1');
+    await expect(page.locator('.app-version')).toHaveText(`v${version}`);
     await page.bringToFront();
     const canvas = page.locator(
       desktop ? '.dice-panel canvas' : '.tray canvas',

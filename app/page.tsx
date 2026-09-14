@@ -74,6 +74,7 @@ export default function Home() {
     if(value)unlockSound();
   }
   const soundButton=<Button variant="ghost" size="sm" onClick={toggleSound} aria-label={sound?'Mute sounds':'Enable sounds'} title={sound?'Mute sounds':'Enable sounds'} aria-pressed={sound}>{sound?<Volume2 size={18}/>:<VolumeX size={18}/>}</Button>;
+  const [surface, setSurface] = useState('');
   const [settings, updateSettings] = useSettings();
   const [showSettings, setShowSettings] = useState(false);
   const settingsButton=<Button variant="ghost" size="sm" onClick={()=>setShowSettings(s=>!s)} aria-label="Settings" title="Settings" aria-pressed={showSettings}><SettingsIcon size={18}/></Button>;
@@ -94,6 +95,7 @@ export default function Home() {
       setKey(k);
       setOverlay(p.get('overlay') === '1');
       setDesktop(p.get('desktop') === '1');
+      setSurface(p.get('desktop') === '1' && ['table','hotbar'].includes(p.get('surface') || '') ? p.get('surface')! : '');
       try {
         const saved = JSON.parse(
           localStorage.getItem('rollparty:' + k) || 'null',
@@ -109,7 +111,11 @@ export default function Home() {
     };
     read();
     window.addEventListener('hashchange', read);
-    return () => window.removeEventListener('hashchange', read);
+    const syncCredentials = (event: StorageEvent) => {
+      if (event.key === 'rollparty:' + new URLSearchParams(location.hash.slice(1)).get('room')) read();
+    };
+    window.addEventListener('storage', syncCredentials);
+    return () => { window.removeEventListener('hashchange', read); window.removeEventListener('storage', syncCredentials); };
   }, []);
   const api = useCallback(
     async (body?: unknown, roomKey = key, credential = cred) => {
@@ -152,7 +158,7 @@ export default function Home() {
       const fresh = rolls.filter((r) => !seen.current.has(r.id));
       for (const r of fresh) {
         seen.current.add(r.id);
-        if (animate) queue.current.push(r);
+        if (animate && surface !== 'hotbar') queue.current.push(r);
       }
       // A direct roll()/throwDice() response ingests here too, immediately advancing
       // the poll cursor - otherwise the next scheduled poll re-fetches this same roll
@@ -164,9 +170,11 @@ export default function Home() {
             .sort((a, b) => (a.seq || 0) - (b.seq || 0))
             .slice(-100),
         );
-      if (animate) play();
+      if (surface === 'hotbar' && rolls.length) {
+        const latest = rolls[rolls.length - 1]; setActive(latest); setSettledId(latest.id);
+      } else if (animate) play();
     },
-    [play],
+    [play, surface],
   );
   useEffect(() => {
     if (!key) return;
@@ -364,10 +372,10 @@ export default function Home() {
     );
   if (overlay)
     return (
-      <main className={desktop ? "overlay-root desktop-overlay" : "overlay-root"}>
+      <main className={`${desktop ? "overlay-root desktop-overlay" : "overlay-root"}${surface ? ` split-${surface}` : ""}`}>
         {settingsPanel}
         {desktop && <div className="desktop-drag-bar">VincentsVibeRoller <AppVersion /><span className="window-hints" title="Move window / resize from corner"><Move size={15} aria-label="Drag header to move"/><Maximize2 size={15} aria-label="Resize using the corner grip"/></span></div>}
-        <div className="rpg-left">
+        {surface !== 'hotbar' && <div className="rpg-left">
           <div className="console-panel">
             <div className="console-head">
               <Dices size={16} /> VincentsVibeRoller{' '}
@@ -389,8 +397,8 @@ export default function Home() {
             <RollReveal roll={active} settledId={settledId} fresh={fresh} mode={settings.reveal}/>
             {(active || desktop) && <DiceStage reducedEffects={settings.reducedEffects} pendingExpression={pendingExpression} roll={active} transparent sizeMultiplier={desktop ? 2 : 1} interactive={desktop} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />}
           </div>
-        </div>
-        {desktop && <section className="rpg-hotbar desktop-roll-controls">
+        </div>}
+        {desktop && surface !== 'table' && <section className="rpg-hotbar desktop-roll-controls">
           {!cred ? <form onSubmit={e => {e.preventDefault(); enter(false);}}>
             <label>Your name<input value={name} onChange={e=>setName(e.target.value)} maxLength={40} placeholder="Adventurer" /></label>
             <Button type="submit" disabled={busy || !connected}>Join and roll</Button>
@@ -407,7 +415,7 @@ export default function Home() {
             <ActionBar expression={expression} disabled={busy || !connected}
               color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
           </>}
-          <small>Drag to move. Throw firmly to record a new roll.</small>
+          <small>{surface === 'hotbar' ? 'Roll here. Choose Interact with table to drag dice or move the table window.' : 'Drag to move. Throw firmly to record a new roll.'}</small>
         </section>}
       </main>
     );

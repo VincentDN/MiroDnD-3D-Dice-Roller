@@ -8,7 +8,7 @@ const os = require('node:os');
 const config = require('../config.cjs');
 
 // Exercise host orchestration without pretending this verifies the Windows compositor.
-test('room changes, interactive window, IPC isolation, monitor fallback and visibility', async () => {
+test('synced windows, native click-through, IPC isolation, monitor fallback and visibility', async () => {
   const windows = [], handlers = new Map();
   let displays = [
     { id: 1, label: 'Main', bounds: { width: 1920, height: 1080 }, workArea: { x: 0, y: 0, width: 1920, height: 1040 } },
@@ -27,6 +27,7 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
       windows.push(this);
     }
     setMenu() {} setAlwaysOnTop(value) { this.top = value; }
+    setFocusable(value) { this.focusable = value; }
     setIgnoreMouseEvents(value) { this.passthrough = value; }
     setVisibleOnAllWorkspaces() {} setBounds(bounds) { this.bounds = bounds; }
     getBounds() { return this.bounds || {x:this.options.x, y:this.options.y,width:this.options.width,height:this.options.height}; }
@@ -66,15 +67,17 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
     __dirname: directory, process: { env: {}, argv: [] },
   });
   await new Promise(setImmediate);
-  const [panel, overlay, room] = windows;
+  const [panel, overlay, hotbar, room] = windows;
+  assert.equal(windows.length,4);
   const call = (name, ...args) => handlers.get(`desktop:${name}`)({
     sender: panel.webContents, senderFrame: panel.webContents.mainFrame,
   }, ...args);
   assert.equal(overlay.options.transparent, true);
-  assert.equal(overlay.options.focusable, true);
+  assert.equal(overlay.options.focusable, false);
   assert.equal(overlay.options.resizable, true);
   assert.equal(overlay.options.movable, true);
-  assert.equal(overlay.passthrough, false);
+  assert.equal(overlay.passthrough, true);
+  assert.equal(hotbar.passthrough, false);
   assert.equal(overlay.top, true);
   assert(overlay.options.webPreferences.preload.endsWith('overlay-preload.cjs'));
   assert.equal(room.options.webPreferences.preload, undefined);
@@ -83,12 +86,28 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   const key = 'b'.repeat(64);
   call('open-room', config.roomURL(key));
   await new Promise(setImmediate);
-  assert.equal(overlay.url, config.roomURL(key, true));
+  assert.equal(overlay.url, config.roomURL(key, true, 'table'));
+  assert.equal(hotbar.url,config.roomURL(key,true,'hotbar'));
+  assert.equal(hotbar.visible,true);
+  assert.equal(hotbar.webContents.muted,true);
   assert.equal(overlay.visible, true);
   assert.equal(room.webContents.muted,true);
   assert.equal(overlay.webContents.muted,false);
   assert.equal(overlay.inactive, true);
   assert.equal(overlay.focused, undefined);
+  const interactionEvent = {sender:hotbar.webContents,senderFrame:hotbar.webContents.mainFrame};
+  handlers.get('overlay:interaction')(interactionEvent,true);
+  assert.equal(overlay.passthrough,false);
+  assert.equal(overlay.focusable,true);
+  handlers.get('overlay:interaction')({sender:room.webContents,senderFrame:room.webContents.mainFrame},false);
+  assert.equal(overlay.passthrough,false);
+  handlers.get('overlay:interaction')({...interactionEvent,senderFrame:{url:hotbar.url}},false);
+  assert.equal(overlay.passthrough,false);
+  assert.throws(()=>call('table-interactive','yes'),/Invalid/);
+  call('table-interactive',false);
+  assert.equal(overlay.passthrough,true);
+  assert.equal(overlay.focusable,false);
+  assert.equal(hotbar.passthrough,false);
   const checkDownload = (url, mime, filename, sender = room.webContents) => {
     let prevented = false, dialog;
     remoteSession.emit('will-download', { preventDefault() { prevented = true; } }, {
@@ -144,13 +163,17 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   await call('history', true);
   call('visible', false);
   assert.equal(overlay.visible, false);
+  assert.equal(hotbar.visible,false);
   call('visible', true);
   assert.equal(overlay.visible, true);
   call('display', 2);
   assert.equal(overlay.bounds.x, -1920);
+  assert.equal(hotbar.bounds.x,-1920);
+  assert(overlay.bounds.y+overlay.bounds.height<=hotbar.bounds.y);
   displays = displays.slice(0, 1);
   screen.emit('display-removed');
   assert.equal(overlay.bounds.x, 0);
+  assert.equal(hotbar.bounds.x,0);
   assert.throws(() => call('display', 999), /unavailable/);
   let blocked = false;
   room.webContents.emit('will-navigate', { preventDefault() { blocked = true; } }, 'https://evil.test/');
@@ -159,4 +182,14 @@ test('room changes, interactive window, IPC isolation, monitor fallback and visi
   assert.equal(overlay.visible, false);
   assert.equal(call('state').hasRoom, false);
   assert.equal(overlay.url, 'about:blank');
+  assert.equal(hotbar.url,'about:blank');
+  call('open-room',config.roomURL(key));
+  await new Promise(setImmediate);
+  hotbar.webContents.emit('render-process-gone');
+  assert.equal(overlay.visible,false);
+  assert.equal(hotbar.visible,false);
+  call('retry');
+  await new Promise(setImmediate);
+  assert.equal(overlay.visible,true);
+  assert.equal(hotbar.visible,true);
 });

@@ -288,3 +288,10 @@
 .roll-reveal.subtle .reveal-player { font-size:16px; }
 @keyframes roll-reveal-pulse { 0% {opacity:0} 15%,75% {opacity:1} 100% {opacity:0} }
 @media(prefers-reduced-motion:reduce) { .roll-reveal { animation:none; box-shadow:none; background:color-mix(in srgb,var(--reveal-color) 18%,var(--bg-panel)); } }
+
+/* Native desktop uses two compact, independently movable windows. */
+.overlay-root.split-table, .overlay-root.split-hotbar { grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); }
+.split-table .rpg-left { grid-row:2; }
+.split-table .dice-panel { max-height:55vh; min-height:160px; }
+.split-hotbar .rpg-hotbar { grid-row:2; max-height:none; min-height:0; }
+.split-hotbar .desktop-drag-bar { padding-right:230px; }

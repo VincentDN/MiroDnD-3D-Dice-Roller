@@ -11,12 +11,13 @@ function render(state) {
   $('display').value = String(state.displayId);
   $('visible').checked = state.visible;
   $('history').checked = state.history;
+  $('table-interactive').checked = state.tableInteractive;
   $('save-path').textContent = state.savePath ? state.savePath : 'Not set - Save Markdown will ask each time.';
   $('clear-save-path').hidden = !state.savePath;
   $('roller').textContent = state.hasRoom ? 'Open roller' : 'Create a room / open roller';
   $('status').textContent = !state.hasRoom ? 'Create or join a room to start.'
     : !state.visible ? 'Dice hidden. Your room stays connected.'
-    : state.overlayReady ? 'Overlay open. New rolls will appear over Miro.' : 'Opening the dice overlay…';
+    : state.overlayReady ? 'Hotbar and table open. New rolls appear on the table.' : 'Opening the dice overlay…';
   $('error').hidden = !state.error;
   $('error').textContent = state.error;
   $('shortcuts').replaceChildren(...state.shortcuts.map((shortcut) => {
@@ -39,6 +40,7 @@ $('join').addEventListener('submit', (event) => {
 $('roller').addEventListener('click', () => act(() => window.rollparty.showRoom()));
 $('display').addEventListener('change', () => act(() => window.rollparty.setDisplay(Number($('display').value))));
 $('visible').addEventListener('change', () => act(() => window.rollparty.setVisible($('visible').checked)));
+$('table-interactive').addEventListener('change', () => act(() => window.rollparty.setTableInteractive($('table-interactive').checked)));
 $('history').addEventListener('change', () => act(() => window.rollparty.setHistory($('history').checked)));
 $('choose-save-path').addEventListener('click', () => act(() => window.rollparty.chooseSavePath()));
 $('clear-save-path').addEventListener('click', () => act(() => window.rollparty.clearSavePath()));
