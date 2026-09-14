@@ -16,6 +16,8 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 ## Transparent desktop window over Miro
 
+**Cloning for testing?** Open [`portable/VincentsVibeRoller.exe`](portable/VincentsVibeRoller.exe) after cloning or pulling. The repository includes the latest verified portable Windows app, with no build tools or Git LFS required. Close the app before pulling updates. Successful main releases automatically refresh the EXE, checksum and build details in [`portable/`](portable/README.md).
+
 **[Download the standalone Windows EXE](https://github.com/VincentDN/MiroDnD-3D-Dice-Roller/releases/latest/download/VincentsVibeRoller.exe)** - download and run, no installer, administrator rights or build tools needed. It is unsigned. Both the browser and EXE require an internet connection to the shared Cloudflare room service.
 
 Every PR builds and launch-tests the EXE and tests the browser/Worker. Every merge to `main` publishes a new portable release and deploys the tested Cloudflare site once the repository's Cloudflare secrets are configured. See [automatic delivery and setup](docs/cloudflare-deploy.md).

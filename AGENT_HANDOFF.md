@@ -1,3 +1,7 @@
+# Portable EXE delivery requirement (2026-09-14)
+
+The user requires a portable EXE inside the GitHub repository for clone-and-run testing on every future release. Keep `portable/VincentsVibeRoller.exe` tracked as an ordinary Git file, with checksum and source metadata. The release workflow copies the tested artifact into this folder and pushes a bot commit to main (no recursive workflow run). Never replace this with release-only downloads or a local build requirement. `scripts/sync-portable.mjs` verifies the artifact checksum and GitHub file-size limit. If newer source has reached main, its queued build owns the next update.
+
 # Current delivery — synced desktop windows, v0.7.2 (2026-09-14)
 
 - User explicitly authorized merging all feature work with Claude’s redesign and pushing to main. This supersedes the earlier branch-only instruction. Claude main `25a0c0b` is already integrated through `677f683`; dice features were verified at `8ca5cec`.
