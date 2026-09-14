@@ -1,3 +1,7 @@
+# Quickroll (2026-09-14)
+
+Added a small QR button below the normal Roll button in browser and desktop hotbar. It submits the current expression and label with `quick: true`. The authenticated server evaluates dice directly (including keep rules and modifiers), persists the result, and skips physics. Every client prints the result immediately, bypassing the animation queue and full-table reveal. Ordinary rolls remain physical. Quickroll retries retain their request ID; switching between normal and quick uses a distinct ID. Coverage: API math/idempotency and browser/desktop shared results. Portable EXE delivery below remains mandatory.
+
 # Portable EXE delivery requirement (2026-09-14)
 
 The user requires a portable EXE inside the GitHub repository for clone-and-run testing on every future release. Keep `portable/VincentsVibeRoller.exe` tracked as an ordinary Git file, with checksum and source metadata. The release workflow copies the tested artifact into this folder and pushes a bot commit to main (no recursive workflow run). Never replace this with release-only downloads or a local build requirement. `scripts/sync-portable.mjs` verifies the artifact checksum and GitHub file-size limit. If newer source has reached main, its queued build owns the next update.

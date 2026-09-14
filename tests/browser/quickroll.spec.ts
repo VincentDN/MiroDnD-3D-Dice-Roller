@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test';
+
+test('Quickroll prints a shared result immediately without physics or reveal', async ({page, context}) => {
+  test.setTimeout(60000);
+  await page.goto('/');
+  await page.getByPlaceholder('Dungeon Master').fill('Quick wizard');
+  await page.getByRole('button', {name: /Create a room/}).click();
+  const qr = page.getByRole('button', {name: 'Quickroll (QR)', exact: true});
+  await expect(qr).toBeEnabled();
+  const normal = page.getByRole('button', {name: 'Roll dice', exact: true});
+  expect((await qr.boundingBox())!.y).toBeGreaterThan((await normal.boundingBox())!.y);
+  const table = await context.newPage();
+  await table.goto(page.url() + '&overlay=1&desktop=1&surface=table');
+  await expect(table.locator('.console-head .live')).toHaveText('LIVE');
+  const response = page.waitForResponse(r => r.url().endsWith('/api/session') && r.request().method() === 'POST' && r.request().postDataJSON()?.quick === true);
+  await qr.click();
+  const result = await (await response).json();
+  expect(result.quick).toBe(true);
+  expect(result.physics).toBeUndefined();
+  expect(result.total).toBe(result.dice.reduce((sum: number, die: {kept: boolean; value: number}) => sum + (die.kept ? die.value : 0), result.modifier));
+  await expect(page.locator('.tray-result')).toContainText(String(result.total), {timeout: 1000});
+  await expect(page.locator('.roll-reveal')).toHaveCount(0);
+  await expect(table.locator('.roll-entry')).toContainText(String(result.total));
+  await expect(table.locator('.roll-entry')).toContainText('Quick wizard');
+  await expect(table.locator('.roll-reveal')).toHaveCount(0);
+  const bar = await context.newPage();
+  await bar.goto(page.url() + '&overlay=1&desktop=1&surface=hotbar');
+  await expect(bar.getByRole('button', {name: 'Quickroll (QR)'})).toBeEnabled();
+  await page.screenshot({path:'test-results/quickroll.png'});
+});

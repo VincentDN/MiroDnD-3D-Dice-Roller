@@ -23,6 +23,19 @@ const b = (
   await call({ action: 'join', name: 'Test wizard', color: '#ab79ef' }, key)
 ).data;
 const id = crypto.randomUUID();
+const quickId = crypto.randomUUID();
+const quickKey = (await call({action:'create', name:'Quickroll tests'})).data.key;
+const quickPlayer = (await call({action:'join', name:'Quick wizard'}, quickKey)).data;
+const quickBody = { action: 'roll', id: quickId, expression: '2d20kh1+5', quick: true };
+const quickRoll = await call(quickBody, quickKey, quickPlayer.secret);
+assert.equal(quickRoll.status, 200);
+assert.equal(quickRoll.data.quick, true);
+assert.equal(quickRoll.data.physics, undefined);
+assert.equal(quickRoll.data.dice.filter(d => d.kept).length, 1);
+assert.equal(quickRoll.data.total, Math.max(...quickRoll.data.dice.map(d => d.value)) + 5);
+const quickRetry = await call(quickBody, quickKey, quickPlayer.secret);
+assert.equal(quickRetry.data.id, quickRoll.data.id);
+assert.equal(quickRetry.data.total, quickRoll.data.total);
 const roll = await call(
   { action: 'roll', id, expression: '2d20kh1+5', label: 'Initiative' },
   key,

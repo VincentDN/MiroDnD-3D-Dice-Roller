@@ -1,6 +1,7 @@
 import { database } from '@/db/raw';
 import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
 import { evaluatePhysical, evaluateThrow } from '@/lib/dice-physics';
+import { evaluate } from '@/lib/dice';
 import { validateAppearance } from '@/lib/dice-appearance';
 import { validateDamage, criticalExpression } from '@/lib/action-damage';
 const json = (data: unknown, status = 200) =>
@@ -127,6 +128,9 @@ export async function POST(req: Request) {
       return json({ ok: true });
     }
     if (b.action === 'roll' || b.action === 'throw') {
+      if (b.quick !== undefined && (typeof b.quick !== 'boolean' || b.action !== 'roll'))
+        throw Error('Invalid Quickroll request.');
+      const quick = b.quick === true;
       if (typeof b.id !== 'string' || !/^[0-9a-f-]{36}$/.test(b.id))
         throw Error('Invalid roll request.');
       // Both checks depend only on the authenticated player; one database round trip.
@@ -157,7 +161,8 @@ export async function POST(req: Request) {
         appearance = group.appearance ?? attack.appearance; damage = undefined;
         linked = {linkedTo:b.linkedTo,damageIndex:b.damageIndex,critical:b.critical};
         rollLabel = `${group.name}${b.critical?' (critical)':''}`;
-        outcome = evaluatePhysical(b.critical ? criticalExpression(group.expression) : group.expression, [1.5,2].includes(b.diceScale)?b.diceScale:1.5,b.aspect);
+        const expression = b.critical ? criticalExpression(group.expression) : group.expression;
+        outcome = quick ? evaluate(expression) : evaluatePhysical(expression, [1.5,2].includes(b.diceScale)?b.diceScale:1.5,b.aspect);
       } else if (b.action === 'throw' && b.parent === null) {
         // Only the ready d20 can start a roll without a recorded parent.
         // Validate and simulate its release just like any subsequent throw.
@@ -171,9 +176,10 @@ export async function POST(req: Request) {
         appearance=parent.appearance; damage=parent.damage;
         if(parent.linkedTo)linked={linkedTo:parent.linkedTo,damageIndex:parent.damageIndex,critical:parent.critical};
         outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1,b.bounds ?? parent.physics?.bounds), parent:b.parent };
-      } else outcome=evaluatePhysical(b.expression,[1.5,2,2.1].includes(b.diceScale) ? b.diceScale : 1,b.aspect);
+      } else outcome=quick ? evaluate(b.expression) : evaluatePhysical(b.expression,[1.5,2,2.1].includes(b.diceScale) ? b.diceScale : 1,b.aspect);
       const roll = {
         id: b.id,
+        ...(quick ? {quick: true} : {}),
         playerId: player.id,
         ...outcome,
         ...(appearance ? {appearance} : {}),

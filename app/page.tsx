@@ -85,7 +85,7 @@ export default function Home() {
     initial = useRef(true),
     animationBusy = useRef(false),
     timer = useRef<ReturnType<typeof setTimeout> | null>(null),
-    retry = useRef<{ id: string; expression: string; label: string; options?: ActionRollOptions } | null>(
+    retry = useRef<{ id: string; expression: string; label: string; options?: ActionRollOptions; quick: boolean } | null>(
       null,
     );
   useEffect(() => {
@@ -158,7 +158,7 @@ export default function Home() {
       const fresh = rolls.filter((r) => !seen.current.has(r.id));
       for (const r of fresh) {
         seen.current.add(r.id);
-        if (animate && surface !== 'hotbar') queue.current.push(r);
+        if (animate && surface !== 'hotbar' && !r.quick) queue.current.push(r);
       }
       // A direct roll()/throwDice() response ingests here too, immediately advancing
       // the poll cursor - otherwise the next scheduled poll re-fetches this same roll
@@ -172,7 +172,18 @@ export default function Home() {
         );
       if (surface === 'hotbar' && rolls.length) {
         const latest = rolls[rolls.length - 1]; setActive(latest); setSettledId(latest.id);
-      } else if (animate) play();
+      } else if (animate) {
+        const quick = fresh.findLast(r => r.quick);
+        if (quick) {
+          // Quickroll bypasses even an in-progress animation/reveal. Its history
+          // and server-generated result are shared with every room surface.
+          if (timer.current) clearTimeout(timer.current);
+          animationBusy.current = true;
+          setFresh(false);
+          setSettledId(quick.id);
+          setActive(quick);
+        } else play();
+      }
     },
     [play, surface],
   );
@@ -250,20 +261,20 @@ export default function Home() {
     }
   }
   const roll = useCallback(
-    async (raw = expression, rollLabel = label, options?: ActionRollOptions) => {
+    async (raw = expression, rollLabel = label, options?: ActionRollOptions, quick = false) => {
       if (!cred) throw Error('Join this room first.');
       setBusy(true);
       setError('');
       try {
         parseExpression(raw);
         unlockSound();
-        setPendingExpression(raw);
+        if (!quick) setPendingExpression(raw);
         if (
           !retry.current ||
           retry.current.expression !== raw ||
-          retry.current.label !== rollLabel || JSON.stringify(retry.current.options) !== JSON.stringify(options)
+          retry.current.label !== rollLabel || retry.current.quick !== quick || JSON.stringify(retry.current.options) !== JSON.stringify(options)
         )
-          retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel, options };
+          retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel, options, quick };
         const data = await api({ action: 'roll', ...retry.current, ...options, diceScale: desktop ? 2 : 1.5, aspect: trayAspect.current });
         retry.current = null;
         ingest([data]);
@@ -408,7 +419,8 @@ export default function Home() {
               <div className="desktop-dice-picker">{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
               <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
                 <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
-                <Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
+                <div className="roll-submit-stack"><Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
+                <Button type="button" size="sm" variant="ghost" className="quick-roll" aria-label="Quickroll (QR)" title="Quickroll: show the result without animation" disabled={busy || !connected} onClick={()=>roll(expression,label,undefined,true).catch(()=>{})}>QR</Button></div>
               </form>
               <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
             </div>
@@ -694,7 +706,7 @@ export default function Home() {
                           placeholder="Perception check"
                         />
                       </label>
-                      <Button
+                      <div className="roll-submit-stack"><Button
                         type="submit"
                         className="primary roll-button"
                         disabled={busy || !connected}
@@ -703,6 +715,7 @@ export default function Home() {
                         {busy ? 'Rolling…' : 'Roll dice'}
                         <ArrowUpRight />
                       </Button>
+                      <Button type="button" size="sm" variant="ghost" className="quick-roll" aria-label="Quickroll (QR)" title="Quickroll: show the result without animation" disabled={busy || !connected} onClick={()=>roll(expression,label,undefined,true).catch(()=>{})}>QR</Button></div>
                     </div>
                   </form>
                   <p className="notation-hint">

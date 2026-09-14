@@ -4,7 +4,7 @@
 @theme inline {--color-background:var(--background);--color-foreground:var(--foreground);--color-primary:var(--primary);--color-primary-foreground:var(--primary-foreground);--color-border:var(--border);--color-ring:var(--primary);--color-muted:var(--muted);--color-muted-foreground:var(--muted-foreground);--font-sans:Arial,sans-serif;}
 
 /* Theme tokens. `default` (below) is the original purple-and-blue look; [data-theme] on
-   <html> switches the rest. Only the semantic tokens below are themed — see AGENT_HANDOFF.md
+   <html> switches the rest. Only the semantic tokens below are themed â€” see AGENT_HANDOFF.md
    for which surfaces were judged dominant enough to re-skin. */
 :root,.dark{
   --background:#10151c;--foreground:#f0f3f5;--primary:#c44dff;--primary-foreground:#210d2c;--border:#303b46;--muted:#1c2631;--muted-foreground:#9ba8b6;--radius:.7rem;
@@ -295,3 +295,5 @@
 .split-table .dice-panel { max-height:55vh; min-height:160px; }
 .split-hotbar .rpg-hotbar { grid-row:2; max-height:none; min-height:0; }
 .split-hotbar .desktop-drag-bar { padding-right:230px; }
+
+.roll-submit-stack{display:flex;flex-direction:column;align-items:stretch;gap:3px}.roll-submit-stack .quick-roll{align-self:center;min-height:24px;height:24px;padding:2px 14px;font-size:11px;line-height:1;opacity:.8}.roll-submit-stack .quick-roll:hover{opacity:1}

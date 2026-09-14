@@ -7,6 +7,7 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 - Numbered 3D d4, d6, d8, d10, d12, d20 and percentile dice.
 - Mixed dice pools and modifiers: `2d6+1d4+3`.
+- **QR (Quickroll)** below the normal Roll button prints the current roll directly, without animation or reveal delay. Results are generated on the server and shared in room history.
 - Advantage: `2d20kh1+5`; disadvantage: `2d20kl1+5`.
 - Ability scores: `4d6kh3`. Keep highest/lowest supports any pool.
 - Up to 40 logical dice in one roll; d100 displays a tens and a units d10. 00 + 0 means 100.

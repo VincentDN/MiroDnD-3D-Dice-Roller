@@ -4,6 +4,7 @@ export const SIDES = [4, 6, 8, 10, 12, 20, 100];
 export type Die = { sides: number; value: number; kept: boolean };
 export type Roll = {
   id: string;
+  quick?: boolean;
   playerId?: string;
   seq?: number;
   parent?: string;
