@@ -1,4 +1,5 @@
-import {version} from '../../package.json';
+import {readFileSync} from 'node:fs';
+const {version} = JSON.parse(readFileSync('package.json', 'utf8'));
 import { test, expect } from '@playwright/test';
 
 for (const desktop of [false, true]) {
