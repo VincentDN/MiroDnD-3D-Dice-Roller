@@ -133,7 +133,15 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update clone-ready portable EXE (${PORTABLE_RELEASE})"
           # GITHUB_TOKEN pushes do not trigger another delivery run.
-          git push origin HEAD:main
+          if ! git push origin HEAD:main; then
+            git fetch origin main
+            if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+              echo 'Main advanced during upload; the newer build will refresh portable/.' >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo '::error::Could not push portable EXE to main.'
+              exit 1
+            fi
+          fi
 
   deploy:
     name: Update live Cloudflare site
