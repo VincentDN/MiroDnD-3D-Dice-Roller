@@ -79,21 +79,21 @@ assert.equal(
 );
 const updated = await call(null, key);
 assert.equal(updated.data.players.find((p) => p.id === b.id).color, '#2244aa');
-// A chosen avatar (lib/avatars.ts) always wins over any raw color sent alongside it.
+// A chosen fixed role (lib/roles.ts) always wins over any raw color sent alongside it.
 const c = (
   await call(
-    { action: 'join', name: 'Test warlord', avatar: 'tom-varn', color: '#ffffff' },
+    { action: 'join', name: 'Test warlord', role: 'monk', color: '#ffffff' },
     key,
   )
 ).data;
 const afterJoin = await call(null, key);
 const warlord = afterJoin.data.players.find((p) => p.id === c.id);
-assert.equal(warlord.avatar, 'tom-varn');
+assert.equal(warlord.role, 'monk');
 assert.equal(warlord.color, '#3fae5c');
 assert.equal(
   (
     await call(
-      { action: 'profile', name: 'Test warlord', avatar: 'teddy' },
+      { action: 'profile', name: 'Test warlord', role: 'barbarian' },
       key,
       c.secret,
     )
@@ -101,7 +101,7 @@ assert.equal(
   200,
 );
 const afterProfile = await call(null, key);
-assert.equal(afterProfile.data.players.find((p) => p.id === c.id).avatar, 'teddy');
+assert.equal(afterProfile.data.players.find((p) => p.id === c.id).role, 'barbarian');
 // A starting die has no historical parent but must use its actual release motion.
 const release = [{ p: [-1, 3, 0], q: [0, 0, 0, 1], v: [4, 3, 2], w: [12, 8, 4] }];
 const bounds = { width: 24, depth: 12 };

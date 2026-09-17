@@ -1,11 +1,11 @@
-export type ThemeId = 'default' | 'drakkenheim' | 'miro-light';
+export type ThemeId = 'default' | 'toxic' | 'miro-light';
 export type Settings = { theme: ThemeId; volume: number; reveal?: 'full'|'subtle'|'off'; reducedEffects?: boolean };
 
 export const SETTINGS_KEY = 'rollparty:settings';
 
 export const THEMES: { id: ThemeId; label: string; description: string }[] = [
   { id: 'default', label: 'Default', description: 'The original purple-and-blue night table.' },
-  { id: 'drakkenheim', label: 'Drakkenheim', description: 'Toxic acid-green magic over a ruined, grimy city.' },
+  { id: 'toxic', label: 'Toxic Ruins', description: 'Toxic acid-green magic over a ruined, grimy city.' },
   { id: 'miro-light', label: 'Miro Light', description: 'A clean light board, styled after the Miro app.' },
 ];
 
@@ -13,7 +13,7 @@ export const DEFAULT_VOLUME = 0.7;
 export const DEFAULT_SETTINGS: Settings = { theme: 'default', volume: DEFAULT_VOLUME };
 
 function isTheme(value: unknown): value is ThemeId {
-  return value === 'default' || value === 'drakkenheim' || value === 'miro-light';
+  return value === 'default' || value === 'toxic' || value === 'miro-light';
 }
 
 export function readSettings(raw: string | null): Settings {

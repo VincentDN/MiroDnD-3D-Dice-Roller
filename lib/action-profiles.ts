@@ -2,6 +2,7 @@ import { parseExpression } from './dice.ts';
 import { readPresets } from './dice-presets.ts';
 import { validateAppearance, type DiceAppearance } from './dice-appearance.ts';
 import { validateDamage, type DamageGroup } from './action-damage.ts';
+import { isFixedRoleId, type RoleId } from './roles.ts';
 
 export const ACTIONS_KEY = 'rollparty:actions:v1';
 export const MAX_PROFILES = 12;
@@ -25,6 +26,10 @@ export type ActionProfile = {
   actions: SavedAction[];
   appearance?: DiceAppearance;
   styles?: { name: string; appearance: DiceAppearance }[];
+  /** Tags a profile as the auto-seeded hotbar for a party role, separate from
+   * the user-editable `name` - lets ensureRoleProfile() seed a role's hotbar
+   * exactly once even if the player later renames the character. */
+  roleId?: RoleId;
 };
 export type ActionCollection = {
   version: 1;
@@ -124,6 +129,7 @@ export function parseCollection(raw: string): ActionCollection {
     return {
       id: id(p.id),
       name: profileName(p.name),
+      ...(isFixedRoleId(p.roleId) ? { roleId: p.roleId } : {}),
       ...(p.appearance ? { appearance: validateAppearance(p.appearance) } : {}),
       ...(p.styles !== undefined
         ? {
@@ -209,6 +215,29 @@ export function appendImport(
     activeId: profiles[0].id,
     profiles: [...current.profiles, ...profiles],
   };
+}
+// Seeds a role's default hotbar into the collection the first time that role
+// is picked, and switches to it. Once a profile carries that roleId, later
+// calls only switch the active character - edits and removals stick, and
+// picking the same role twice never re-seeds or duplicates it.
+export function ensureRoleProfile(
+  collection: ActionCollection,
+  role: RoleId,
+  seed: { name: string; actions: Omit<SavedAction, 'id'>[]; appearance?: DiceAppearance } | undefined,
+  uuid: () => string = () => crypto.randomUUID(),
+): ActionCollection {
+  const existing = collection.profiles.find((p) => p.roleId === role);
+  if (existing)
+    return existing.id === collection.activeId ? collection : { ...collection, activeId: existing.id };
+  if (!seed || collection.profiles.length >= MAX_PROFILES) return collection;
+  const profile: ActionProfile = {
+    id: uuid(),
+    name: seed.name,
+    roleId: role,
+    actions: seed.actions.map((a) => ({ ...a, id: uuid() })),
+    ...(seed.appearance ? { appearance: seed.appearance } : {}),
+  };
+  return { ...collection, activeId: profile.id, profiles: [...collection.profiles, profile] };
 }
 export function moveAction(
   actions: SavedAction[],

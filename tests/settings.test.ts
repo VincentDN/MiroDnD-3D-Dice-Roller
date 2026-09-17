@@ -5,8 +5,8 @@ import { DEFAULT_SETTINGS, readSettings, writeSettings } from '../lib/settings.t
 test('settings round-trip through storage and fall back to defaults when corrupt', () => {
   assert.deepEqual(readSettings(null), DEFAULT_SETTINGS);
   assert.deepEqual(readSettings('not-json'), DEFAULT_SETTINGS);
-  assert.deepEqual(readSettings(JSON.stringify({ version: 2, theme: 'drakkenheim' })), DEFAULT_SETTINGS);
-  const saved = { theme: 'drakkenheim' as const, volume: 0.4 };
+  assert.deepEqual(readSettings(JSON.stringify({ version: 2, theme: 'toxic' })), DEFAULT_SETTINGS);
+  const saved = { theme: 'toxic' as const, volume: 0.4 };
   assert.deepEqual(readSettings(writeSettings(saved)), saved);
 });
 test('settings clamp volume and reject unknown themes rather than throwing', () => {

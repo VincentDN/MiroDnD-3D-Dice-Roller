@@ -3,11 +3,11 @@ A screen overlay dice roller we use to play Dungeons and Dragons on Miro
 
 ## Play online
 
-[Open VincentsVibeRoller](https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev), enter a name, choose an icon (sets your dice color), and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
+[Open VincentsVibeRoller](https://mirodnd-3d-dice-roller.vincent-de-nil.workers.dev), enter a name, pick your party role (sets your dice color and hotbar), and create a room. Use **Invite players** to share the room. Players need only the invite link and a browser.
 
 - Numbered 3D d4, d6, d8, d10, d12, d20 and percentile dice.
 - Mixed dice pools and modifiers: `2d6+1d4+3`.
-- **QR (Quickroll)** below the normal Roll button prints the current roll directly, without animation or reveal delay. Results are generated on the server and shared in room history.
+- **QR (Quickroll)** below the normal Roll button prints the current roll directly, without animation or reveal delay - a distinct rolling-dice sound effect plays first, then the usual result cue. Results are generated on the server and shared in room history.
 - Advantage: `2d20kh1+5`; disadvantage: `2d20kl1+5`.
 - Ability scores: `4d6kh3`. Keep highest/lowest supports any pool.
 - Up to 40 logical dice in one roll; d100 displays a tens and a units d10. 00 + 0 means 100.
@@ -25,15 +25,19 @@ Every PR builds and launch-tests the EXE and tests the browser/Worker. Every mer
 
 The native Windows host is in [`desktop/`](desktop/README.md). It opens a transparent, always-on-top, interactive window initially in the **lower left** of your selected monitor. Drag its header to move it, or use its corner grip to resize it. Roll directly in the overlay. Dice use a fixed orthographic projection; their apparent size does not change while moving. The desktop tray has a purple backdrop, collision sounds, a result ping and a brass fanfare for a kept natural 20. Save named combinations directly in the overlay; presets and mute preference persist on this device. Create or join a room in the app, roll, then return to Miro. Everyone's new rolls appear over your desktop while receiving mouse input inside its own window. No OBS setup is required. See the desktop guide for packaging and the Windows acceptance check.
 
-## Icons and dice color
+## Party roles and class hotbars
 
-Instead of picking a raw color, each player picks an icon (The Star God's Hunger, Teddy, Saravi, Tom Varn) and their dice color follows from that automatically - the server derives the color from the chosen icon, so it can't drift out of sync. Portrait art lives in `public/avatars/` (`star-gods-hunger.png`, `teddy.png`, `saravi.png`, `tom-varn.png`, defined in `lib/avatars.ts`); until those files are added, each icon shows as a colored badge with a themed glyph instead - dropping in the real files at those exact paths upgrades the look with no code changes. Add another icon by adding one entry to `AVATARS` in `lib/avatars.ts` plus its image file.
+Instead of picking a raw color, each player picks a generic party role - **DM**, **Barbarian**, **Wizard**, **Cleric**, **Monk**, or **Create Player** (pick any dice color yourself) - and their dice color follows from that automatically, defined in `lib/roles.ts`. Picking a class role the first time also seeds a matching character hotbar (attacks, saves, checks) with a class-appropriate color/gradient, from `lib/role-presets.ts`; the DM instead gets a plain `d20+1`..`d20+5` / `d20-1`..`d20-5` modifier row. Re-picking the same role never re-seeds or overwrites your edits.
 
 ## Character actions
 
-Both the browser room and Windows overlay offer a **Character actions** bar. Open **Manage actions** to save the current dice expression with a name and optional reminder, edit actions, move them up/down, or organize them into character profiles. Click an action to roll it immediately with its name recorded in the shared history. Choosing a character profile does not change your room player identity.
+Both the browser room and Windows overlay offer a **Character actions** bar. Open **Manage actions** to save the current dice expression with a name and optional reminder, edit actions, drag the grip handle or use the up/down buttons to reorder them, or organize them into character profiles. Every hotbar button also carries a small pencil icon for a one-click jump straight to its editor. Click an action to roll it immediately with its name recorded in the shared history. Choosing a character profile does not change your room player identity.
 
 Collections support up to 12 characters and 30 actions per character. Existing saved combinations are automatically copied into **My character**, with the old data retained as a backup. Actions are saved on this device and synchronize between windows of the same browser/app. Browser and Windows app storage are separate: use **Export characters** / **Import characters** to transfer your JSON collection. Imports add characters without replacing existing ones; malformed files are rejected. The file contains no room invitations, player credentials or roll history.
+
+## DM soundboard
+
+The DM role gets an extra **Soundboard** section next to the character actions: a handful of fun synthesized cues (drumroll, dramatic sting, applause, sad trombone, rimshot) to play at the table, defined alongside the rest of the dice audio in `lib/dice-audio.ts`. No external audio files - everything is generated with the Web Audio API, same as the existing dice and result sounds.
 
 See the [faster play roadmap](LLM-Docs/PLAY-ROADMAP.md) for the next increments.
 

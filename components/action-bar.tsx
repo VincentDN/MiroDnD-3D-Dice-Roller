@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { Pencil, GripVertical } from 'lucide-react';
 import {
   ACTIONS_KEY,
   MAX_ACTIONS,
@@ -11,11 +12,14 @@ import {
   parseCollection,
   appendImport,
   moveAction,
+  ensureRoleProfile,
   type ActionCollection,
   type ActionColorMode,
   type SavedAction,
 } from '@/lib/action-profiles';
 import { PRESET_KEY } from '@/lib/dice-presets';
+import { roleProfileSeed } from '@/lib/role-presets';
+import type { RoleId } from '@/lib/roles';
 import AppearanceEditor from './appearance-editor';
 import { defaultAppearance, type DiceAppearance } from '@/lib/dice-appearance';
 import {
@@ -51,6 +55,7 @@ export default function ActionBar({
   disabled,
   onRoll,
   color: playerColor = '#32a6c8',
+  role,
 }: {
   expression: string;
   disabled: boolean;
@@ -60,6 +65,7 @@ export default function ActionBar({
     options?: ActionRollOptions,
   ) => Promise<{ id: string }>;
   color?: string;
+  role?: RoleId;
 }) {
   const [collection, setCollection] = useState<ActionCollection | null>(null);
   const [error, setError] = useState('');
@@ -88,6 +94,9 @@ export default function ActionBar({
   } | null>(null);
   const stored = useRef<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const managerRef = useRef<HTMLDetailsElement>(null);
+  const editorRef = useRef<HTMLFormElement>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
   function resetEditor() {
     setEditing(null);
     setName('');
@@ -151,6 +160,29 @@ export default function ActionBar({
       setError(`Could not save: ${(e as Error).message}`);
       return false;
     }
+  }
+  // Seeds this role's default hotbar the first time it's picked (or switches
+  // to it if it already exists) - a no-op once that role has a profile, so
+  // re-picking the same role, or any later unrelated edit, never re-seeds it.
+  useEffect(() => {
+    if (!collection || !role) return;
+    const next = ensureRoleProfile(collection, role, roleProfileSeed(role));
+    if (next !== collection) commit(next);
+  }, [role, collection]);
+  function openEditor(a: SavedAction) {
+    setEditing(a.id);
+    setName(a.name);
+    setDice(a.expression);
+    setNote(a.note);
+    setAppearance(a.appearance);
+    setDamage(a.damage ?? []);
+    setColorMode(a.colorMode || '');
+    setColor(a.color || DEFAULT_COLOR);
+    setColor2(a.color2 || DEFAULT_COLOR2);
+    if (managerRef.current) managerRef.current.open = true;
+    requestAnimationFrame(() =>
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+    );
   }
   function updateActions(actions: SavedAction[]) {
     return (
@@ -293,33 +325,43 @@ export default function ActionBar({
         <>
           <div className="action-buttons">
             {profile.actions.map((a) => (
-              <button
-                type="button"
-                key={a.id}
-                className={`saved-action${a.colorMode === 'sparkle' ? ' saved-action-sparkle' : ''}`}
-                style={actionStyle(a)}
-                disabled={disabled}
-                title={a.note || a.expression}
-                aria-label={`Roll ${a.name}`}
-                onClick={async () => {
-                  try {
-                    const result = await onRoll(a.expression, a.name, {
-                      appearance: a.appearance ?? profile.appearance,
-                      damage: a.damage,
-                    });
-                    setAttack(
-                      a.damage?.length
-                        ? { id: result.id, name: a.name, groups: a.damage }
-                        : null,
-                    );
-                  } catch (e) {
-                    setError((e as Error).message);
-                  }
-                }}
-              >
-                <strong>{a.name}</strong>
-                <small>{a.expression}</small>
-              </button>
+              <div className="saved-action-wrap" key={a.id}>
+                <button
+                  type="button"
+                  className={`saved-action${a.colorMode === 'sparkle' ? ' saved-action-sparkle' : ''}`}
+                  style={actionStyle(a)}
+                  disabled={disabled}
+                  title={a.note || a.expression}
+                  aria-label={`Roll ${a.name}`}
+                  onClick={async () => {
+                    try {
+                      const result = await onRoll(a.expression, a.name, {
+                        appearance: a.appearance ?? profile.appearance,
+                        damage: a.damage,
+                      });
+                      setAttack(
+                        a.damage?.length
+                          ? { id: result.id, name: a.name, groups: a.damage }
+                          : null,
+                      );
+                    } catch (e) {
+                      setError((e as Error).message);
+                    }
+                  }}
+                >
+                  <strong>{a.name}</strong>
+                  <small>{a.expression}</small>
+                </button>
+                <button
+                  type="button"
+                  className="saved-action-edit"
+                  aria-label={`Quick edit ${a.name}`}
+                  title="Edit this action"
+                  onClick={() => openEditor(a)}
+                >
+                  <Pencil size={12} />
+                </button>
+              </div>
             ))}
           </div>
           {attack && (
@@ -355,15 +397,41 @@ export default function ActionBar({
               Save your attacks, checks and spells for one-click rolls.
             </p>
           )}
-          <details className="action-manager">
+          <details className="action-manager" ref={managerRef}>
             <summary>Manage actions</summary>
             <p className="muted">
               Saved on this device. Export to move characters between browser
-              and desktop. Rolls still use your room player name.
+              and desktop. Rolls still use your room player name. Drag the
+              handle to reorder.
             </p>
             <div className="action-edit-list">
               {profile.actions.map((a, i) => (
-                <div className="action-edit-row" key={a.id}>
+                <div
+                  className={`action-edit-row${dragId === a.id ? ' dragging' : ''}`}
+                  key={a.id}
+                  draggable
+                  onDragStart={() => setDragId(a.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const from = profile.actions.findIndex((x) => x.id === dragId);
+                    const to = profile.actions.findIndex((x) => x.id === a.id);
+                    setDragId(null);
+                    if (from < 0 || to < 0 || from === to) return;
+                    const next = [...profile.actions];
+                    const [moved] = next.splice(from, 1);
+                    next.splice(to, 0, moved);
+                    updateActions(next);
+                  }}
+                  onDragEnd={() => setDragId(null)}
+                >
+                  <span
+                    className="action-drag-handle"
+                    aria-hidden="true"
+                    title="Drag to reorder"
+                  >
+                    <GripVertical size={14} />
+                  </span>
                   <span>
                     <strong>
                       {a.color && (
@@ -404,17 +472,7 @@ export default function ActionBar({
                     <button
                       type="button"
                       aria-label={`Edit ${a.name}`}
-                      onClick={() => {
-                        setEditing(a.id);
-                        setName(a.name);
-                        setDice(a.expression);
-                        setNote(a.note);
-                        setAppearance(a.appearance);
-                        setDamage(a.damage ?? []);
-                        setColorMode(a.colorMode || '');
-                        setColor(a.color || DEFAULT_COLOR);
-                        setColor2(a.color2 || DEFAULT_COLOR2);
-                      }}
+                      onClick={() => openEditor(a)}
                     >
                       Edit
                     </button>
@@ -472,6 +530,7 @@ export default function ActionBar({
             )}
             <form
               className="action-editor"
+              ref={editorRef}
               onSubmit={(e) => {
                 e.preventDefault();
                 saveAction();

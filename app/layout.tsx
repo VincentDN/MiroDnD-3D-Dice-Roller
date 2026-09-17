@@ -19,7 +19,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var s=JSON.parse(localStorage.getItem('rollparty:settings')||'null');var t=s&&s.theme;if(t==='drakkenheim'||t==='miro-light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();",
+              "(function(){try{var s=JSON.parse(localStorage.getItem('rollparty:settings')||'null');var t=s&&s.theme;if(t==='toxic'||t==='miro-light')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();",
           }}
         />
         {children}

@@ -28,12 +28,13 @@ import SettingsPanel, { useSettings } from '@/components/settings-panel';
 import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion, TableBounds } from '@/lib/dice-physics';
 import ActionBar from '@/components/action-bar';
+import Soundboard from '@/components/soundboard';
 import RollReveal from '@/components/roll-reveal';
 import type { ActionRollOptions } from '@/lib/action-damage';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
-import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
-import { AvatarImage, AvatarPicker } from '@/components/avatar';
-type Player = { id: string; name: string; color: string; avatar: string | null; seen: number };
+import { DEFAULT_ROLE_ID, DEFAULT_CUSTOM_COLOR, CUSTOM_ROLE_ID, roleById, isRoleId, type RoleId } from '@/lib/roles';
+import { RoleBadge, RolePicker } from '@/components/role-picker';
+type Player = { id: string; name: string; color: string; role: string | null; seen: number };
 type Credential = { id: string; secret: string };
 export default function Home() {
   const trayAspect = useRef<number | undefined>(undefined);
@@ -45,11 +46,12 @@ export default function Home() {
     [cred, setCred] = useState<Credential | null>(null);
   const [name, setName] = useState(''),
     [roomName, setRoomName] = useState('The Sunday campaign'),
-    [avatar, setAvatar] = useState(DEFAULT_AVATAR_ID),
+    [role, setRole] = useState<RoleId>(DEFAULT_ROLE_ID),
+    [customColor, setCustomColor] = useState(DEFAULT_CUSTOM_COLOR),
     [players, setPlayers] = useState<Player[]>([]),
     [history, setHistory] = useState<Roll[]>([]),
     [active, setActive] = useState<Roll | null>(null);
-  const color = avatarById(avatar)?.color ?? AVATARS[0].color;
+  const color = role === CUSTOM_ROLE_ID ? customColor : (roleById(role)?.color ?? DEFAULT_CUSTOM_COLOR);
   const [expression, setExpression] = useState('1d20'),
     [label, setLabel] = useState(''),
     [busy, setBusy] = useState(false),
@@ -102,8 +104,10 @@ export default function Home() {
         );
         setCred(saved);
         setName(localStorage.getItem('rollparty:name') || '');
-        const savedAvatar = localStorage.getItem('rollparty:avatar');
-        setAvatar(isAvatarId(savedAvatar) ? savedAvatar : DEFAULT_AVATAR_ID);
+        const savedRole = localStorage.getItem('rollparty:role');
+        setRole(isRoleId(savedRole) ? savedRole : DEFAULT_ROLE_ID);
+        const savedColor = localStorage.getItem('rollparty:customColor');
+        if (savedColor && /^#[0-9a-f]{6}$/i.test(savedColor)) setCustomColor(savedColor);
       } catch {
         setCred(null);
       }
@@ -236,13 +240,14 @@ export default function Home() {
   );
   async function join(roomKey = key) {
     const data = await api(
-      { action: 'join', name: name.trim() || 'Adventurer', avatar },
+      { action: 'join', name: name.trim() || 'Adventurer', role, color },
       roomKey,
       null,
     );
     localStorage.setItem('rollparty:' + roomKey, JSON.stringify(data));
     localStorage.setItem('rollparty:name', name);
-    localStorage.setItem('rollparty:avatar', avatar);
+    localStorage.setItem('rollparty:role', role);
+    localStorage.setItem('rollparty:customColor', customColor);
     setCred(data);
   }
   async function enter(create: boolean) {
@@ -333,9 +338,10 @@ export default function Home() {
     setBusy(true);
     setError('');
     try {
-      await api({ action: 'profile', name, avatar });
+      await api({ action: 'profile', name, role, color });
       localStorage.setItem('rollparty:name', name);
-      localStorage.setItem('rollparty:avatar', avatar);
+      localStorage.setItem('rollparty:role', role);
+      localStorage.setItem('rollparty:customColor', customColor);
       setNotice('Your dice style is saved.');
     } catch (e) {
       setError((e as Error).message);
@@ -425,7 +431,8 @@ export default function Home() {
               <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
             </div>
             <ActionBar expression={expression} disabled={busy || !connected}
-              color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
+              color={color} role={role} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
+            {role === 'dm' && <Soundboard />}
           </>}
           <small>{surface === 'hotbar' ? 'Roll here. Choose Interact with table to drag dice or move the table window.' : 'Drag to move. Throw firmly to record a new roll.'}</small>
         </section>}
@@ -516,8 +523,8 @@ export default function Home() {
                     />
                   </label>
                 )}
-                <label>Pick your icon</label>
-                <AvatarPicker value={avatar} onChange={setAvatar} />
+                <label>Pick your role</label>
+                <RolePicker value={role} color={customColor} onChange={setRole} onColorChange={setCustomColor} />
                 <Button type="submit" disabled={busy} className="primary">
                   {busy ? 'Opening room…' : key ? 'Join room' : 'Create a room'}{' '}
                   <ArrowUpRight />
@@ -531,13 +538,13 @@ export default function Home() {
               <aside className="lobby-art">
                 <IntroDice color={color} />
                 <h2>
-                  DnD Sundays 2026: Dungeons of Drakkenheim
+                  Your table, your story
                 </h2>
                 <p className="muted">
-                  It’s just another day, just another job... in the DUNGEONS OF DRAKKENHEIM!
+                  One party. One room. Every roll, together.
                 </p>
                 <div className="dice-strip">
-                  SIX – SIX – SIX – THE STAR GODS HUNGER – SIX – SIX -SIX
+                  SIX – SIX – SIX – NATURAL TWENTY – SIX – SIX – SIX
                 </div>
               </aside>
             </div>
@@ -620,7 +627,8 @@ export default function Home() {
                   </div>
                 </div>
                 <ActionBar expression={expression} disabled={busy || !connected}
-                  color={color} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
+                  color={color} role={role} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
+                {role === 'dm' && <Soundboard />}
                 <section className="roller">
                   <div className="section-heading">
                     <h2>Make a roll</h2>
@@ -731,25 +739,22 @@ export default function Home() {
                     <span>{players.length} players</span>
                   </div>
                   <div className="player-list">
-                    {players.map((p) => {
-                      const pAvatar = avatarById(p.avatar);
-                      return (
-                        <div key={p.id} className="player">
-                          {pAvatar ? (
-                            <AvatarImage avatar={pAvatar} size={32} />
-                          ) : (
-                            <span style={{ background: p.color }}>
-                              {p.name.slice(0, 1).toUpperCase()}
-                            </span>
-                          )}
-                          <div>
-                            {p.name}
-                            {p.id === cred.id && <small>you</small>}
-                          </div>
-                          <Dices size={18} color={p.color} />
+                    {players.map((p) => (
+                      <div key={p.id} className="player">
+                        {isRoleId(p.role) && p.role !== CUSTOM_ROLE_ID ? (
+                          <RoleBadge role={p.role} color={p.color} size={32} />
+                        ) : (
+                          <span style={{ background: p.color }}>
+                            {p.name.slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                        <div>
+                          {p.name}
+                          {p.id === cred.id && <small>you</small>}
                         </div>
-                      );
-                    })}
+                        <Dices size={18} color={p.color} />
+                      </div>
+                    ))}
                   </div>
                   <details>
                     <summary>Your dice & profile</summary>
@@ -761,8 +766,8 @@ export default function Home() {
                         maxLength={40}
                       />
                     </label>
-                    <label>Your icon</label>
-                    <AvatarPicker value={avatar} onChange={setAvatar} />
+                    <label>Your role</label>
+                    <RolePicker value={role} color={customColor} onChange={setRole} onColorChange={setCustomColor} />
                     <Button
                       className="outline"
                       disabled={busy}

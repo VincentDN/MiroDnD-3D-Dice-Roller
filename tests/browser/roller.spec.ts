@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('briefing intro records practice physics and both trays fill their containers', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', {name: 'DnD Sundays 2026: Dungeons of Drakkenheim'})).toBeVisible();
+  await expect(page.getByRole('heading', {name: 'Your table, your story'})).toBeVisible();
   const practice = await page.locator('.lobby-dice canvas').boundingBox();
   // The idle d20 starts at x=-1.875 on a 12-unit-deep table. Move it
   // beyond the old central wall, then let real physics settle it.
@@ -62,7 +62,7 @@ test('browser and desktop overlay share a room, render dice and retain settings'
   // The RPG-style HUD anchors the dice above the full-width hotbar, not below it.
   expect(controls!.y).toBeGreaterThanOrEqual(dice!.y + dice!.height);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: /Drakkenheim/ }).click();
-  await expect(overlay.locator('html')).toHaveAttribute('data-theme', 'drakkenheim');
+  await page.getByRole('button', { name: /Toxic Ruins/ }).click();
+  await expect(overlay.locator('html')).toHaveAttribute('data-theme', 'toxic');
   expect(errors).toEqual([]);
 });

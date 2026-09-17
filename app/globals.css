@@ -31,7 +31,7 @@
   --desktop-canvas-grad-1:#352044;--desktop-canvas-grad-2:#1b1226;--desktop-canvas-border:#8950ad;--desktop-canvas-shadow:#08040dbb;
   --loading-fg:#acc1cf;--render-error-fg:#c4dbe9;
 }
-[data-theme="drakkenheim"]{
+[data-theme="toxic"]{
   --background:#0a0d08;--foreground:#d9e8c8;--primary:#8cff3c;--primary-foreground:#0b1406;--border:#2b3a20;--muted:#141a0f;--muted-foreground:#8a9c78;
   --bg-app:#0a0d08;--bg-panel:#10140c;--bg-input:#0d1108;--bg-outline:#141a0f;--border-strong:#3a4d28;
   --text:#d9e8c8;--text-soft:#b9c9a4;--text-faint:#7c8f6a;--text-status:#a9c48f;--header-border:#22301a;
@@ -154,18 +154,20 @@
 .theme-option-text small { color:var(--muted-foreground); font-size:12px; font-weight:400; }
 .theme-swatch { width:28px; height:28px; border-radius:50%; flex-shrink:0; border:1px solid #ffffff2a; }
 .theme-swatch-default { background:radial-gradient(circle at 35% 30%, #c44dff, #10151c 75%); }
-.theme-swatch-drakkenheim { background:radial-gradient(circle at 35% 30%, #8cff3c, #0a0d08 75%); }
+.theme-swatch-toxic { background:radial-gradient(circle at 35% 30%, #8cff3c, #0a0d08 75%); }
 .theme-swatch-miro-light { background:radial-gradient(circle at 35% 30%, #4262ff, #f5f6f8 75%); }
 
-/* Avatar / icon picker */
-.avatar-picker { display:flex; gap:14px; margin:15px 0 27px; flex-wrap:wrap; }
-.avatar-option { display:flex; flex-direction:column; align-items:center; gap:6px; width:76px; padding:8px 4px; border:2px solid transparent; border-radius:12px; background:none; color:var(--text-soft); }
-.avatar-option:hover { background:var(--bg-input); }
-.avatar-option.selected { border-color:var(--accent); color:var(--text); }
-.avatar-option-name { font-size:11px; line-height:1.3; text-align:center; }
-.avatar-image { border-radius:50%; object-fit:cover; display:block; }
-.avatar-fallback { border-radius:50%; display:grid; place-items:center; color:#10151c; flex-shrink:0; }
-.player .avatar-image, .player .avatar-fallback { flex-shrink:0; }
+/* Party role picker */
+.role-picker { margin:15px 0 27px; }
+.role-picker-options { display:flex; gap:14px; flex-wrap:wrap; }
+.role-option { display:flex; flex-direction:column; align-items:center; gap:6px; width:86px; padding:8px 4px; border:2px solid transparent; border-radius:12px; background:none; color:var(--text-soft); }
+.role-option:hover { background:var(--bg-input); }
+.role-option.selected { border-color:var(--accent); color:var(--text); }
+.role-option-name { font-size:11px; line-height:1.3; text-align:center; }
+.role-badge { border-radius:50%; display:grid; place-items:center; color:#10151c; flex-shrink:0; }
+.player .role-badge { flex-shrink:0; }
+.role-color-picker { display:flex; align-items:center; gap:10px; margin-top:14px; font-size:13px; }
+.role-color-picker input[type=color] { width:56px; height:34px; margin:0; padding:2px; flex:none; }
 
 /* Overlay mode: a full-screen "RPG HUD" instead of small panels stacked in
    one corner with wasted space below them. A CSS grid gives the drag bar
@@ -233,9 +235,16 @@
 .action-bar .saved-action { display:flex; flex-direction:column; align-items:flex-start; gap:3px; max-width:100%; text-align:left; overflow-wrap:anywhere; }
 .action-bar small { color:var(--text-soft); font-size:11px; }
 .action-bar .muted { font-size:12px; line-height:1.5; margin:8px 0; }
+.saved-action-wrap { position:relative; display:inline-flex; }
+.saved-action-wrap .saved-action { padding-right:24px; }
+.saved-action-edit { position:absolute; top:4px; right:4px; width:18px; height:18px; padding:0!important; display:grid; place-items:center; border-radius:50%!important; background:#00000055!important; border:1px solid #ffffff33!important; color:#fff!important; opacity:.55; }
+.saved-action-edit:hover { opacity:1; }
 .action-manager summary { cursor:pointer; color:var(--text-soft); font-size:12px; padding:6px 0; }
 .action-edit-list { max-height:230px; overflow:auto; }
 .action-edit-row { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; border-bottom:1px solid var(--border); padding:8px 0; }
+.action-edit-row.dragging { opacity:.4; }
+.action-drag-handle { display:flex; align-items:center; color:var(--text-faint); cursor:grab; flex:none; }
+.action-drag-handle:active { cursor:grabbing; }
 .action-edit-row > span { display:flex; flex-direction:column; min-width:0; overflow-wrap:anywhere; flex:1 1 120px; font-size:12px; }
 .action-edit-row > div { display:flex; gap:4px; flex-wrap:wrap; }
 .action-bar .action-editor, .action-bar .character-editor { display:flex; flex-direction:column; align-items:stretch; gap:8px; margin:12px 0; padding-top:12px; border-top:1px solid var(--border); }
@@ -297,3 +306,10 @@
 .split-hotbar .desktop-drag-bar { padding-right:230px; }
 
 .roll-submit-stack{display:flex;flex-direction:column;align-items:stretch;gap:3px}.roll-submit-stack .quick-roll{align-self:center;min-height:24px;height:24px;padding:2px 14px;font-size:11px;line-height:1;opacity:.8}.roll-submit-stack .quick-roll:hover{opacity:1}
+
+/* DM soundboard: fun table cues, styled like the character action bar. */
+.soundboard { min-width:0; padding:16px; margin:12px 0; background:var(--bg-panel); color:var(--text); border:1px solid var(--border); border-radius:10px; }
+.soundboard-buttons { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.soundboard-buttons button { border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:6px; padding:8px 14px; font-size:13px; cursor:pointer; }
+.soundboard-buttons button:hover { border-color:var(--accent); }
+.rpg-hotbar .soundboard { padding:8px; margin:0; }

@@ -7,8 +7,10 @@ import {
   appendImport,
   actionFields,
   moveAction,
+  ensureRoleProfile,
   type ActionCollection,
 } from '../lib/action-profiles.ts';
+import { roleProfileSeed } from '../lib/role-presets.ts';
 const legacy = JSON.stringify({
   version: 1,
   presets: [
@@ -148,4 +150,34 @@ void test('action button colors default to flat, gradient/sparkle fall back to a
     parseCollection(JSON.stringify(current)).profiles[0].actions[0],
     current.profiles[0].actions[0],
   );
+});
+void test('ensureRoleProfile seeds a role hotbar exactly once, switches to it, and leaves edits/custom alone', () => {
+  let id = 0;
+  const uuid = () => `role-${id++}`;
+  const empty = loadCollection(null, null);
+  const seeded = ensureRoleProfile(empty, 'barbarian', roleProfileSeed('barbarian'), uuid);
+  assert.equal(seeded.profiles.length, 2);
+  const barbarian = seeded.profiles[1];
+  assert.equal(barbarian.roleId, 'barbarian');
+  assert.equal(barbarian.name, 'Barbarian');
+  assert(barbarian.actions.length > 0);
+  assert.equal(seeded.activeId, barbarian.id);
+  assert.deepEqual(parseCollection(JSON.stringify(seeded)), seeded);
+  // Switching away and back only changes activeId - the seeded actions and
+  // any edits the player made are untouched, and nothing is duplicated.
+  const renamed = {
+    ...seeded,
+    activeId: seeded.profiles[0].id,
+    profiles: seeded.profiles.map((p) =>
+      p.roleId === 'barbarian' ? { ...p, name: 'Grognak', actions: p.actions.slice(0, 1) } : p,
+    ),
+  };
+  const again = ensureRoleProfile(renamed, 'barbarian', roleProfileSeed('barbarian'), uuid);
+  assert.equal(again.profiles.length, 2);
+  assert.equal(again.activeId, barbarian.id);
+  assert.equal(again.profiles[1].name, 'Grognak');
+  assert.equal(again.profiles[1].actions.length, 1);
+  // Custom players never get a seed to begin with.
+  assert.equal(roleProfileSeed('custom'), undefined);
+  assert.equal(ensureRoleProfile(empty, 'custom', undefined, uuid), empty);
 });

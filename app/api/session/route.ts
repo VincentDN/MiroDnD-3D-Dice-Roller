@@ -1,5 +1,5 @@
 import { database } from '@/db/raw';
-import { AVATARS, DEFAULT_AVATAR_ID, avatarById, isAvatarId } from '@/lib/avatars';
+import { CUSTOM_ROLE_ID, DEFAULT_CUSTOM_COLOR, roleById, isFixedRoleId } from '@/lib/roles';
 import { evaluatePhysical, evaluateThrow } from '@/lib/dice-physics';
 import { evaluate } from '@/lib/dice';
 import { validateAppearance } from '@/lib/dice-appearance';
@@ -25,14 +25,16 @@ function name(v: unknown, fallback: string) {
   if (typeof v !== 'string') return fallback;
   return v.trim().slice(0, 40) || fallback;
 }
-// The dice color always comes from the chosen avatar, so it can't drift from
-// it; an unrecognized/missing avatar falls back to a raw hex color if one was
-// sent (older clients), then to the default avatar.
-function avatarAndColor(b: { avatar?: unknown; color?: unknown }) {
-  if (isAvatarId(b.avatar)) return { avatar: b.avatar, color: avatarById(b.avatar)!.color };
+// The dice color always comes from the chosen role, so it can't drift from
+// it. A fixed class role (dm/barbarian/wizard/cleric/monk) always uses that
+// class's color; "custom" (Create Player) requires a real hex the client
+// sent. An unrecognized/missing role falls back to a raw hex color if one
+// was sent (older clients), then to the default custom color.
+function roleAndColor(b: { role?: unknown; color?: unknown }) {
+  if (isFixedRoleId(b.role)) return { role: b.role, color: roleById(b.role)!.color };
   if (typeof b.color === 'string' && /^#[0-9a-f]{6}$/i.test(b.color))
-    return { avatar: null, color: b.color };
-  return { avatar: DEFAULT_AVATAR_ID, color: AVATARS[0].color };
+    return { role: CUSTOM_ROLE_ID, color: b.color };
+  return { role: CUSTOM_ROLE_ID, color: DEFAULT_CUSTOM_COLOR };
 }
 async function roomFor(req: Request) {
   const key = req.headers.get('x-room-key');
@@ -56,7 +58,7 @@ export async function GET(req: Request) {
     const [p, r] = await Promise.all([
       db
         .prepare(
-          'SELECT id,name,color,avatar,seen FROM players WHERE room=? ORDER BY seen DESC LIMIT 50',
+          'SELECT id,name,color,role,seen FROM players WHERE room=? ORDER BY seen DESC LIMIT 50',
         )
         .bind(room.id)
         .all(),
@@ -104,12 +106,12 @@ export async function POST(req: Request) {
         .first<{ n: number }>();
       if ((count?.n || 0) >= 50)
         throw Error('This room has reached its 50-player limit.');
-      const { avatar, color } = avatarAndColor(b);
+      const { role, color } = roleAndColor(b);
       await db
         .prepare(
-          'INSERT INTO players(id,room,secret,name,color,avatar,seen) VALUES(?,?,?,?,?,?,?)',
+          'INSERT INTO players(id,room,secret,name,color,role,seen) VALUES(?,?,?,?,?,?,?)',
         )
-        .bind(id, room.id, await hash(secret), name(b.name, 'Adventurer'), color, avatar, now)
+        .bind(id, room.id, await hash(secret), name(b.name, 'Adventurer'), color, role, now)
         .run();
       return json({ id, secret });
     }
@@ -120,10 +122,10 @@ export async function POST(req: Request) {
       .first<{ id: string; name: string; color: string }>();
     if (!player) return json({ error: 'Join this room before rolling.' }, 401);
     if (b.action === 'profile') {
-      const { avatar, color } = avatarAndColor(b);
+      const { role, color } = roleAndColor(b);
       await db
-        .prepare('UPDATE players SET name=?,color=?,avatar=?,seen=? WHERE id=?')
-        .bind(name(b.name, 'Adventurer'), color, avatar, now, player.id)
+        .prepare('UPDATE players SET name=?,color=?,role=?,seen=? WHERE id=?')
+        .bind(name(b.name, 'Adventurer'), color, role, now, player.id)
         .run();
       return json({ ok: true });
     }
