@@ -39,7 +39,15 @@ Collections support up to 12 characters and 30 actions per character. Existing s
 
 The DM role gets an extra **Soundboard** section next to the character actions: a handful of fun synthesized cues (drumroll, dramatic sting, applause, sad trombone, rimshot) to play at the table, defined alongside the rest of the dice audio in `lib/dice-audio.ts`. No external audio files - everything is generated with the Web Audio API, same as the existing dice and result sounds.
 
-See the [faster play roadmap](LLM-Docs/PLAY-ROADMAP.md) for the next increments.
+## Table music
+
+The **Music** panel lets the DM point at a local folder of audio files (Chromium-based browsers only - Chrome, Edge, or this app's own desktop window), pick tracks, shuffle and save named bookmarks. The current track, position and shuffle state broadcast to the room the same way rolls do; anyone (DM or player) who separately points their own browser at a matching folder hears it in sync, computed from a server timestamp rather than trusting any client's clock. Players only ever get volume and mute - the server itself rejects a track/bookmark change from anyone whose stored role isn't `dm`. No audio is ever uploaded or stored server-side, only an opaque filename-derived track id.
+
+## Hidden rolls
+
+Check **Hide from party** next to Roll dice (or the eye icon in the desktop hotbar) to roll for only yourself and the DM - a secret Perception or Stealth check, say. A hidden roll never reaches another player's history, notebook or export at all - not a placeholder, the whole record - and an unauthenticated OBS/overlay spectator link never sees one either. Only the DM or the original roller can **Reveal** it, which is a deliberate, one-way action: once revealed, it's public for good.
+
+See the [faster play roadmap](LLM-Docs/PLAY-ROADMAP.md) and the [grand roadmap](LLM-Docs/GRAND-ROADMAP.md) for what's next.
 
 ## Personal roll notebook
 

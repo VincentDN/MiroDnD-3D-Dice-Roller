@@ -344,3 +344,11 @@
 .music-volume input[type=range] { flex:1; margin:0; width:auto; accent-color:var(--accent); }
 .music-position { font-size:11px; color:var(--text-faint); min-width:34px; text-align:right; }
 .rpg-hotbar .music-player { padding:8px; margin:0; }
+
+/* Hidden ("DM only") rolls */
+.hide-roll-toggle { display:flex; align-items:center; gap:7px; width:auto!important; margin:-8px 0 20px; font-size:13px; color:var(--text-soft); cursor:pointer; }
+.hide-roll-toggle input[type=checkbox] { width:auto; margin:0; }
+.tray-label { flex-wrap:wrap; }
+.hidden-roll-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--offline); }
+.reveal-roll { border:1px solid var(--border); background:none; color:var(--text-soft); border-radius:5px; padding:2px 7px; font-size:11px; cursor:pointer; }
+.reveal-roll:hover { border-color:var(--accent); color:var(--accent); }

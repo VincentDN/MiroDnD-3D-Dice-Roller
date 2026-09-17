@@ -18,6 +18,8 @@ import {
   VolumeX,
   Settings as SettingsIcon,
   X,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import DiceStage from '@/components/dice-stage';
 import IntroDice from '@/components/intro-dice';
@@ -57,6 +59,7 @@ export default function Home() {
   const color = role === CUSTOM_ROLE_ID ? customColor : (roleById(role)?.color ?? DEFAULT_CUSTOM_COLOR);
   const [expression, setExpression] = useState('1d20'),
     [label, setLabel] = useState(''),
+    [hideRoll, setHideRoll] = useState(false),
     [busy, setBusy] = useState(false),
     [pendingExpression, setPendingExpression] = useState<string | undefined>(),
     [error, setError] = useState(''),
@@ -361,6 +364,15 @@ export default function Home() {
     },
     [api],
   );
+  async function revealRoll(id: string) {
+    try {
+      const data = await api({ action: 'reveal', id });
+      setHistory((h) => h.map((r) => (r.id === id ? data : r)));
+      setActive((a) => (a?.id === id ? data : a));
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   function url(asOverlay = false) {
     return (
       location.origin +
@@ -418,7 +430,7 @@ export default function Home() {
               </p>
             )}
             <div className="overlay-taskbar">
-              <RollHistory history={history} />
+              <RollHistory history={history} playerId={cred?.id} isDm={role === 'dm'} onReveal={revealRoll} />
             </div>
             {desktop && cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
           </div>
@@ -434,11 +446,12 @@ export default function Home() {
           </form> : <>
             <div className="rpg-hotbar-top">
               {soundButton}{settingsButton}
+              <Button variant="ghost" size="sm" onClick={() => setHideRoll((v) => !v)} aria-label={hideRoll ? 'Roll visible to party' : 'Hide next roll from party'} title={hideRoll ? 'Next roll: hidden from party (DM sees it)' : 'Next roll: visible to everyone'} aria-pressed={hideRoll}>{hideRoll ? <EyeOff size={18} /> : <Eye size={18} />}</Button>
               <div className="desktop-dice-picker">{SIDES.map(s => <Button key={s} size="sm" variant="outline" onClick={()=>setExpression('1d'+s)}>d{s}</Button>)}</div>
-              <form onSubmit={e => { e.preventDefault(); roll().catch(()=>{}); }}>
+              <form onSubmit={e => { e.preventDefault(); roll(expression, label, hideRoll ? { visibility: 'dm' } : undefined).catch(()=>{}); }}>
                 <input aria-label="Dice notation" value={expression} onChange={e=>setExpression(e.target.value)} maxLength={120} spellCheck={false} />
                 <div className="roll-submit-stack"><Button type="submit" className="primary" disabled={busy || !connected}>{busy ? 'Rolling…' : 'Roll'}</Button>
-                <Button type="button" size="sm" variant="ghost" className="quick-roll" aria-label="Quickroll (QR)" title="Quickroll: show the result without animation" disabled={busy || !connected} onClick={()=>roll(expression,label,undefined,true).catch(()=>{})}>QR</Button></div>
+                <Button type="button" size="sm" variant="ghost" className="quick-roll" aria-label="Quickroll (QR)" title="Quickroll: show the result without animation" disabled={busy || !connected} onClick={()=>roll(expression,label,hideRoll ? { visibility: 'dm' } : undefined,true).catch(()=>{})}>QR</Button></div>
               </form>
               <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
             </div>
@@ -619,6 +632,11 @@ export default function Home() {
                 <div className="tray">
                   <div className="tray-label" style={active ? { color: active.color } : undefined}>
                     <span className="live-dot" style={active ? { background: active.color } : undefined} /> Last Roll: {active?.name ?? 'No rolls yet'}
+                    {active?.visibility === 'dm' && (
+                      <span className="hidden-roll-badge">
+                        <EyeOff size={11} /> Hidden
+                      </span>
+                    )}
                   </div>
                   <DiceStage reducedEffects={settings.reducedEffects} pendingExpression={pendingExpression} roll={active} color={color} sizeMultiplier={1.5} onViewport={onViewport} fresh={fresh} onSettled={onDiceSettled} onThrow={throwDice} />
                   <RollReveal roll={active} settledId={settledId} fresh={fresh} mode={settings.reveal}/><div className="tray-result">
@@ -673,7 +691,7 @@ export default function Home() {
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
-                      roll().catch(() => {});
+                      roll(expression, label, hideRoll ? { visibility: 'dm' } : undefined).catch(() => {});
                     }}
                   >
                     <label>
@@ -718,6 +736,15 @@ export default function Home() {
                         <Plus />
                       </Button>
                     </div>
+                    <label className="hide-roll-toggle">
+                      <input
+                        type="checkbox"
+                        checked={hideRoll}
+                        onChange={(e) => setHideRoll(e.target.checked)}
+                      />
+                      {hideRoll ? <EyeOff size={14} /> : <Eye size={14} />}
+                      Hide from party <span className="muted"> · only you and the DM see it</span>
+                    </label>
                     <div className="roll-bottom">
                       <label>
                         Roll label <span className="muted"> · optional</span>
@@ -737,7 +764,7 @@ export default function Home() {
                         {busy ? 'Rolling…' : 'Roll dice'}
                         <ArrowUpRight />
                       </Button>
-                      <Button type="button" size="sm" variant="ghost" className="quick-roll" aria-label="Quickroll (QR)" title="Quickroll: show the result without animation" disabled={busy || !connected} onClick={()=>roll(expression,label,undefined,true).catch(()=>{})}>QR</Button></div>
+                      <Button type="button" size="sm" variant="ghost" className="quick-roll" aria-label="Quickroll (QR)" title="Quickroll: show the result without animation" disabled={busy || !connected} onClick={()=>roll(expression,label,hideRoll ? { visibility: 'dm' } : undefined,true).catch(()=>{})}>QR</Button></div>
                     </div>
                   </form>
                   <p className="notation-hint">
@@ -797,7 +824,7 @@ export default function Home() {
                     <span className="live">LIVE</span>
                   </div>
                   {cred && <RollNotebook key={key+cred.id} room={key} playerId={cred.id} rolls={history}/> }
-                  <RollHistory history={history}/>
+                  <RollHistory history={history} playerId={cred?.id} isDm={role === 'dm'} onReveal={revealRoll}/>
                 </section>
               </aside>
             </div>

@@ -5,6 +5,7 @@ import { evaluate } from '@/lib/dice';
 import { validateAppearance } from '@/lib/dice-appearance';
 import { validateDamage, criticalExpression } from '@/lib/action-damage';
 import { readMusic, validateMusic } from '@/lib/music';
+import { visibleTo } from '@/lib/roll-visibility';
 const json = (data: unknown, status = 200) =>
   Response.json(data, {
     status,
@@ -49,6 +50,14 @@ async function roomFor(req: Request) {
   if (!room) throw Error('This room could not be found.');
   return room as { id: string; name: string; music: string | null };
 }
+async function viewerFor(req: Request, room: { id: string }, db: ReturnType<typeof database>) {
+  const secret = req.headers.get('x-player-key') || '';
+  if (!secret) return null;
+  return db
+    .prepare('SELECT id,role FROM players WHERE room=? AND secret=?')
+    .bind(room.id, await hash(secret))
+    .first<{ id: string; role: string | null }>();
+}
 export async function GET(req: Request) {
   try {
     const room = await roomFor(req),
@@ -56,7 +65,8 @@ export async function GET(req: Request) {
     const after = Number(new URL(req.url).searchParams.get('after') || 0);
     if (!Number.isSafeInteger(after) || after < 0)
       throw Error('Invalid history cursor.');
-    const [p, r] = await Promise.all([
+    const [viewer, p, r] = await Promise.all([
+      viewerFor(req, room, db),
       db
         .prepare(
           'SELECT id,name,color,role,seen FROM players WHERE room=? ORDER BY seen DESC LIMIT 50',
@@ -73,7 +83,9 @@ export async function GET(req: Request) {
     return json({
       room: { name: room.name, music: readMusic(room.music) },
       players: p.results,
-      rolls: r.results.map((x: any) => ({ ...JSON.parse(x.data), seq: x.seq, playerId: x.player })),
+      rolls: r.results
+        .map((x: any) => ({ ...JSON.parse(x.data), seq: x.seq, playerId: x.player }))
+        .filter((roll: any) => visibleTo(roll, viewer)),
     });
   } catch (e) {
     return json({ error: (e as Error).message }, 400);
@@ -141,6 +153,25 @@ export async function POST(req: Request) {
         .run();
       return json({ ok: true });
     }
+    if (b.action === 'reveal') {
+      if (typeof b.id !== 'string' || !/^[0-9a-f-]{36}$/.test(b.id))
+        throw Error('Invalid roll request.');
+      const source = await db
+        .prepare('SELECT seq,data,player FROM rolls WHERE id=? AND room=?')
+        .bind(b.id, room.id)
+        .first<{ seq: number; data: string; player: string }>();
+      if (!source) throw Error('This roll is no longer available.');
+      const stored = JSON.parse(source.data);
+      if (stored.visibility !== 'dm') throw Error('This roll is already visible to everyone.');
+      if (player.role !== 'dm' && source.player !== player.id)
+        throw Error('Only the DM or the original roller can reveal this roll.');
+      delete stored.visibility;
+      await db
+        .prepare('UPDATE rolls SET data=? WHERE id=? AND room=?')
+        .bind(JSON.stringify(stored), b.id, room.id)
+        .run();
+      return json({ ...stored, seq: source.seq });
+    }
     if (b.action === 'roll' || b.action === 'throw') {
       if (b.quick !== undefined && (typeof b.quick !== 'boolean' || b.action !== 'roll'))
         throw Error('Invalid Quickroll request.');
@@ -160,11 +191,14 @@ export async function POST(req: Request) {
           { error: 'Give the dice a moment before rolling again.' },
           429,
         );
+      if (b.visibility !== undefined && b.visibility !== 'everyone' && b.visibility !== 'dm')
+        throw Error('Invalid roll visibility.');
       let outcome;
       let appearance = b.appearance === undefined ? undefined : validateAppearance(b.appearance);
       let damage = b.damage === undefined ? undefined : validateDamage(b.damage);
       let linked: {linkedTo:string;damageIndex:number;critical:boolean} | undefined;
       let rollLabel = name(b.label, '');
+      let visibility: 'dm' | undefined = b.visibility === 'dm' ? 'dm' : undefined;
       if (b.action === 'roll' && b.linkedTo !== undefined) {
         if (typeof b.linkedTo !== 'string' || !/^[0-9a-f-]{36}$/.test(b.linkedTo) || !Number.isInteger(b.damageIndex) || typeof b.critical !== 'boolean') throw Error('Invalid linked damage request.');
         const source = await db.prepare('SELECT data FROM rolls WHERE id=? AND room=? AND player=?').bind(b.linkedTo,room.id,player.id).first<{data:string}>();
@@ -175,6 +209,8 @@ export async function POST(req: Request) {
         appearance = group.appearance ?? attack.appearance; damage = undefined;
         linked = {linkedTo:b.linkedTo,damageIndex:b.damageIndex,critical:b.critical};
         rollLabel = `${group.name}${b.critical?' (critical)':''}`;
+        // Damage for a secret attack stays just as secret - never re-decided per damage roll.
+        visibility = attack.visibility === 'dm' ? 'dm' : undefined;
         const expression = b.critical ? criticalExpression(group.expression) : group.expression;
         outcome = quick ? evaluate(expression) : evaluatePhysical(expression, [1.5,2].includes(b.diceScale)?b.diceScale:1.5,b.aspect);
       } else if (b.action === 'throw' && b.parent === null) {
@@ -187,7 +223,12 @@ export async function POST(req: Request) {
         const source=await db.prepare('SELECT data FROM rolls WHERE id=? AND room=?').bind(b.parent,room.id).first<{data:string}>();
         if (!source) throw Error('This roll is no longer available.');
         const parent=JSON.parse(source.data);
-        appearance=parent.appearance; damage=parent.damage;
+        // A hidden roll can only be picked up and re-thrown by the DM or the
+        // player who rolled it - the same generic error either way, so a
+        // disallowed player can't tell a hidden roll from a missing one.
+        if (parent.visibility === 'dm' && player.role !== 'dm' && parent.playerId !== player.id)
+          throw Error('This roll is no longer available.');
+        appearance=parent.appearance; damage=parent.damage; visibility=parent.visibility;
         if(parent.linkedTo)linked={linkedTo:parent.linkedTo,damageIndex:parent.damageIndex,critical:parent.critical};
         outcome={ ...evaluateThrow(parent.expression,b.release,parent.physics?.diceScale ?? 1,b.bounds ?? parent.physics?.bounds), parent:b.parent };
       } else outcome=quick ? evaluate(b.expression) : evaluatePhysical(b.expression,[1.5,2,2.1].includes(b.diceScale) ? b.diceScale : 1,b.aspect);
@@ -198,6 +239,7 @@ export async function POST(req: Request) {
         ...outcome,
         ...(appearance ? {appearance} : {}),
         ...(damage ? {damage} : {}),
+        ...(visibility ? {visibility} : {}),
         ...linked,
         name: player.name,
         color: player.color,

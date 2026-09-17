@@ -11,6 +11,7 @@ export type ActionRollOptions = {
   linkedTo?: string;
   damageIndex?: number;
   critical?: boolean;
+  visibility?: 'dm';
 };
 export function validateDamage(value: unknown): DamageGroup[] {
   if (!Array.isArray(value) || value.length > 6)

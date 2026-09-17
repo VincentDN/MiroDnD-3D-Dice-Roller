@@ -1,5 +1,5 @@
 'use client';
-import { Dices } from 'lucide-react';
+import { Dices, EyeOff } from 'lucide-react';
 import type { Roll } from '@/lib/dice';
 function linkedLabel(roll: Roll, history: Roll[]) {
   const attack = history.find((r) => r.id === roll.linkedTo);
@@ -8,7 +8,17 @@ function linkedLabel(roll: Roll, history: Roll[]) {
     : '';
 }
 
-export function RollHistory({ history }: { history: Roll[] }) {
+export function RollHistory({
+  history,
+  playerId,
+  isDm,
+  onReveal,
+}: {
+  history: Roll[];
+  playerId?: string;
+  isDm?: boolean;
+  onReveal?: (id: string) => void;
+}) {
   return (
     <div className="roll-log" aria-live="polite">
       {history.length === 0 ? (
@@ -51,6 +61,22 @@ export function RollHistory({ history }: { history: Roll[] }) {
                 {r.parent && r.label !== 'Mouse throw' && (
                   <span>Mouse throw</span>
                 )}
+                {r.visibility === 'dm' && (
+                  <span className="hidden-roll-badge">
+                    <EyeOff size={11} /> Hidden
+                  </span>
+                )}
+                {r.visibility === 'dm' &&
+                  onReveal &&
+                  (isDm || r.playerId === playerId) && (
+                    <button
+                      type="button"
+                      className="reveal-roll"
+                      onClick={() => onReveal(r.id)}
+                    >
+                      Reveal
+                    </button>
+                  )}
                 <time>
                   {new Date(r.created).toLocaleTimeString([], {
                     hour: '2-digit',

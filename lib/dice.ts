@@ -13,6 +13,10 @@ export type Roll = {
   linkedTo?: string;
   damageIndex?: number;
   critical?: boolean;
+  /** Set only while hidden - visible just to its roller and the DM (see
+   * roleAndColor/visibleTo in app/api/session/route.ts). Absent means
+   * visible to everyone; revealing a roll removes this field for good. */
+  visibility?: 'dm';
   physics?: { bounds?: { width: number; depth: number }; diceScale?: number; seed: number; steps: number; poses: { p: number[]; q: number[] }[]; release?: { p: number[]; q: number[]; v: number[]; w: number[] }[] };
   name: string;
   color: string;

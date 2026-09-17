@@ -172,3 +172,64 @@ const bookmark = { id: crypto.randomUUID(), name: 'Ambush!', trackId: 'tavern.mp
 const withBookmark = await call({ action: 'music', ...validMusic, bookmarks: [bookmark] }, musicKey, dm.secret);
 assert.deepEqual(withBookmark.data.music.bookmarks, [bookmark]);
 console.log('PASS: shared music state is DM-only, validated and server-timestamped');
+
+// Hidden ("DM only") rolls: visible to the roller and the DM, invisible to
+// everyone else and to unauthenticated viewers, at every read path.
+const hiddenKey = (await call({ action: 'create', name: 'Hidden roll tests' })).data.key;
+const gm = (await call({ action: 'join', name: 'GM', role: 'dm' }, hiddenKey)).data;
+const rogue = (await call({ action: 'join', name: 'Rogue', role: 'monk' }, hiddenKey)).data;
+const cleric = (await call({ action: 'join', name: 'Cleric', role: 'cleric' }, hiddenKey)).data;
+const hiddenId = crypto.randomUUID();
+const hiddenRoll = await call(
+  { action: 'roll', id: hiddenId, expression: '1d20+5', label: 'Sneak past the guard', visibility: 'dm' },
+  hiddenKey,
+  rogue.secret,
+);
+assert.equal(hiddenRoll.status, 200, JSON.stringify(hiddenRoll));
+assert.equal(hiddenRoll.data.visibility, 'dm');
+// The roller's own POST response always includes it, regardless of visibility.
+const ownerView = await call(null, hiddenKey, rogue.secret);
+assert(ownerView.data.rolls.some((r) => r.id === hiddenId), 'the roller sees their own hidden roll');
+const dmView = await call(null, hiddenKey, gm.secret);
+assert(dmView.data.rolls.some((r) => r.id === hiddenId), 'the DM sees a hidden roll');
+const clericView = await call(null, hiddenKey, cleric.secret);
+assert(!clericView.data.rolls.some((r) => r.id === hiddenId), 'another player never receives a hidden roll');
+const anonView = await call(null, hiddenKey);
+assert(!anonView.data.rolls.some((r) => r.id === hiddenId), 'an unauthenticated/overlay viewer never receives a hidden roll');
+// Another player can't reveal it, drag/re-throw it, or even confirm it exists.
+const wrongReveal = await call({ action: 'reveal', id: hiddenId }, hiddenKey, cleric.secret);
+assert.equal(wrongReveal.status, 400, 'only the DM or the original roller can reveal a hidden roll');
+const wrongRethrow = await call(
+  { action: 'throw', id: crypto.randomUUID(), parent: hiddenId, release: [{ p: [0, 3, 0], q: [0, 0, 0, 1], v: [1, 1, 1], w: [1, 1, 1] }], bounds: { width: 24, depth: 12 } },
+  hiddenKey,
+  cleric.secret,
+);
+assert.equal(wrongRethrow.status, 400, 'another player cannot pick up and re-throw a hidden roll');
+// Linked damage for a hidden attack inherits the same hidden visibility.
+await new Promise((r) => setTimeout(r, 550));
+const hiddenAttackId = crypto.randomUUID();
+const hiddenAttack = await call(
+  { action: 'roll', id: hiddenAttackId, expression: '1d20+4', visibility: 'dm', damage: [{ name: 'Sneak Attack', expression: '3d6' }] },
+  hiddenKey,
+  rogue.secret,
+);
+assert.equal(hiddenAttack.status, 200, JSON.stringify(hiddenAttack));
+await new Promise((r) => setTimeout(r, 550));
+const hiddenDamage = await call(
+  { action: 'roll', id: crypto.randomUUID(), linkedTo: hiddenAttackId, damageIndex: 0, critical: false },
+  hiddenKey,
+  rogue.secret,
+);
+assert.equal(hiddenDamage.status, 200, JSON.stringify(hiddenDamage));
+assert.equal(hiddenDamage.data.visibility, 'dm', 'damage from a hidden attack stays hidden too');
+const clericAfterDamage = await call(null, hiddenKey, cleric.secret);
+assert(!clericAfterDamage.data.rolls.some((r) => r.id === hiddenDamage.data.id), 'the hidden damage roll stays invisible to other players');
+// The DM reveals the original hidden roll - now everyone can see it.
+const revealed = await call({ action: 'reveal', id: hiddenId }, hiddenKey, gm.secret);
+assert.equal(revealed.status, 200, JSON.stringify(revealed));
+assert.equal(revealed.data.visibility, undefined, 'a revealed roll no longer carries a visibility flag');
+const clericAfterReveal = await call(null, hiddenKey, cleric.secret);
+assert(clericAfterReveal.data.rolls.some((r) => r.id === hiddenId), 'a revealed roll becomes visible to everyone');
+const alreadyRevealed = await call({ action: 'reveal', id: hiddenId }, hiddenKey, gm.secret);
+assert.equal(alreadyRevealed.status, 400, 'revealing an already-public roll is rejected');
+console.log('PASS: hidden rolls are invisible to unauthorized viewers at every read path, and reveal is a deliberate one-way action');
