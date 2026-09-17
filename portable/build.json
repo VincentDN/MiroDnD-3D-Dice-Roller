@@ -1,7 +1,7 @@
 {
   "version": "0.7.2",
-  "sourceCommit": "accb471b002e33eea44153a0ea3587c286752d28",
-  "release": "desktop-v0.7.2-build.24",
-  "sha256": "1a3b88b540c3fe4a692705432ac562cff4f4bbafec88a79f5eb394cd9b05f3e5",
-  "bytes": 100562168
+  "sourceCommit": "e80039815d4736474e8c42e9e8a15801a55669e5",
+  "release": "desktop-v0.7.2-build.27",
+  "sha256": "e47166c338750ad05e38ad673d235f2388ee91c822890af63a56a48219d570d1",
+  "bytes": 100562167
 }
