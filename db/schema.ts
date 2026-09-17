@@ -3,6 +3,7 @@ export const rooms = sqliteTable('rooms', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   created: integer('created').notNull(),
+  music: text('music'),
 });
 export const players = sqliteTable(
   'players',

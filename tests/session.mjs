@@ -149,3 +149,26 @@ assert.equal(critical.status,200,JSON.stringify(critical));assert.equal(critical
 await new Promise(r=>setTimeout(r,550));
 const badStyle=await call({action:'roll',id:crypto.randomUUID(),expression:'1d20',appearance:{...appearance,body:'red;script'}},key,c.secret);assert.equal(badStyle.status,400);
 console.log('PASS: appearance snapshots, validated linked damage, critical math and cross-player isolation');
+
+// Music: only a player whose stored role is 'dm' may broadcast a track/bookmark change.
+const musicKey = (await call({ action: 'create', name: 'Music tests' })).data.key;
+const dm = (await call({ action: 'join', name: 'The Referee', role: 'dm' }, musicKey)).data;
+const bard = (await call({ action: 'join', name: 'Bard', role: 'wizard' }, musicKey)).data;
+const initialRoom = await call(null, musicKey);
+assert.deepEqual(initialRoom.data.room.music, { trackId: null, trackName: '', playing: false, position: 0, shuffle: false, bookmarks: [], updated: 0 });
+const validMusic = { trackId: 'tavern.mp3', trackName: 'tavern', playing: true, position: 3.5, shuffle: false, bookmarks: [] };
+const denied = await call({ action: 'music', ...validMusic }, musicKey, bard.secret);
+assert.equal(denied.status, 403, 'a non-DM cannot control the shared music');
+const badPayload = await call({ action: 'music', ...validMusic, playing: 'yes' }, musicKey, dm.secret);
+assert.equal(badPayload.status, 400, 'malformed music state is rejected');
+const musicSet = await call({ action: 'music', ...validMusic }, musicKey, dm.secret);
+assert.equal(musicSet.status, 200, JSON.stringify(musicSet));
+assert.equal(musicSet.data.music.trackId, 'tavern.mp3');
+assert(musicSet.data.music.updated > 0, 'server stamps its own updated timestamp');
+const afterMusic = await call(null, musicKey, bard.secret);
+assert.deepEqual(afterMusic.data.room.music.trackId, 'tavern.mp3');
+assert.equal(afterMusic.data.room.music.updated, musicSet.data.music.updated, 'every client reads the same server-stamped state');
+const bookmark = { id: crypto.randomUUID(), name: 'Ambush!', trackId: 'tavern.mp3', trackName: 'tavern', position: 3.5 };
+const withBookmark = await call({ action: 'music', ...validMusic, bookmarks: [bookmark] }, musicKey, dm.secret);
+assert.deepEqual(withBookmark.data.music.bookmarks, [bookmark]);
+console.log('PASS: shared music state is DM-only, validated and server-timestamped');

@@ -313,3 +313,34 @@
 .soundboard-buttons button { border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:6px; padding:8px 14px; font-size:13px; cursor:pointer; }
 .soundboard-buttons button:hover { border-color:var(--accent); }
 .rpg-hotbar .soundboard { padding:8px; margin:0; }
+
+/* Shared table music: DM-controlled folder/track/shuffle/bookmarks, everyone
+   gets local volume/mute over their own resolved copy of the current track. */
+.music-player { min-width:0; padding:16px; margin:12px 0; background:var(--bg-panel); color:var(--text); border:1px solid var(--border); border-radius:10px; display:flex; flex-direction:column; gap:10px; }
+.music-header { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; }
+.music-header strong { display:flex; align-items:center; gap:6px; }
+.music-now-playing { color:var(--text-soft); font-size:12px; overflow-wrap:anywhere; }
+.music-player .error { margin:0; }
+.music-player .muted { font-size:12px; margin:0; }
+.music-player button { border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+.music-player button:hover { border-color:var(--accent); }
+.music-player button:disabled { opacity:.45; cursor:default; }
+.music-player button.active { border-color:var(--accent); color:var(--accent); }
+.music-tools { display:flex; gap:8px; flex-wrap:wrap; }
+.music-transport { display:flex; gap:6px; align-items:center; }
+.music-transport button { padding:7px; }
+.music-track-list { display:flex; flex-direction:column; gap:3px; max-height:150px; overflow-y:auto; }
+.music-track { text-align:left; border-color:transparent!important; background:none!important; border-radius:6px; padding:5px 8px!important; overflow-wrap:anywhere; }
+.music-track.selected { background:var(--bg-input)!important; border-color:var(--accent)!important; color:var(--accent); }
+.music-bookmark-form { display:flex; gap:6px; }
+.music-bookmark-form input { flex:1; margin:0; min-width:0; padding:6px 8px; font-size:12px; }
+.music-bookmarks { display:flex; flex-wrap:wrap; gap:6px; }
+.music-bookmark { display:inline-flex; align-items:stretch; border:1px solid var(--border); border-radius:6px; background:var(--bg-input); overflow:hidden; }
+.music-bookmark button { border:0; border-radius:0; background:none; padding:5px 8px; }
+.music-bookmark button:first-child { color:var(--text); }
+.music-bookmark button:last-child { padding:5px 6px; color:var(--text-faint); }
+.music-follow { align-self:flex-start; font-size:11px!important; padding:5px 9px!important; opacity:.85; }
+.music-volume { display:flex; align-items:center; gap:8px; }
+.music-volume input[type=range] { flex:1; margin:0; width:auto; accent-color:var(--accent); }
+.music-position { font-size:11px; color:var(--text-faint); min-width:34px; text-align:right; }
+.rpg-hotbar .music-player { padding:8px; margin:0; }

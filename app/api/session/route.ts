@@ -4,6 +4,7 @@ import { evaluatePhysical, evaluateThrow } from '@/lib/dice-physics';
 import { evaluate } from '@/lib/dice';
 import { validateAppearance } from '@/lib/dice-appearance';
 import { validateDamage, criticalExpression } from '@/lib/action-damage';
+import { readMusic, validateMusic } from '@/lib/music';
 const json = (data: unknown, status = 200) =>
   Response.json(data, {
     status,
@@ -42,11 +43,11 @@ async function roomFor(req: Request) {
     throw Error('Open a valid invite link to join a room.');
   const id = await hash(key);
   const room = await database()
-    .prepare('SELECT id,name FROM rooms WHERE id=?')
+    .prepare('SELECT id,name,music FROM rooms WHERE id=?')
     .bind(id)
     .first();
   if (!room) throw Error('This room could not be found.');
-  return room as { id: string; name: string };
+  return room as { id: string; name: string; music: string | null };
 }
 export async function GET(req: Request) {
   try {
@@ -70,7 +71,7 @@ export async function GET(req: Request) {
         .all(),
     ]);
     return json({
-      room: { name: room.name },
+      room: { name: room.name, music: readMusic(room.music) },
       players: p.results,
       rolls: r.results.map((x: any) => ({ ...JSON.parse(x.data), seq: x.seq, playerId: x.player })),
     });
@@ -117,10 +118,21 @@ export async function POST(req: Request) {
     }
     const secret = req.headers.get('x-player-key') || '';
     const player = await db
-      .prepare('SELECT id,name,color FROM players WHERE room=? AND secret=?')
+      .prepare('SELECT id,name,color,role FROM players WHERE room=? AND secret=?')
       .bind(room.id, await hash(secret))
-      .first<{ id: string; name: string; color: string }>();
+      .first<{ id: string; name: string; color: string; role: string | null }>();
     if (!player) return json({ error: 'Join this room before rolling.' }, 401);
+    if (b.action === 'music') {
+      if (player.role !== 'dm')
+        return json({ error: 'Only the DM controls the music.' }, 403);
+      const music = validateMusic(b);
+      const stored = { ...music, updated: now };
+      await db
+        .prepare('UPDATE rooms SET music=? WHERE id=?')
+        .bind(JSON.stringify(stored), room.id)
+        .run();
+      return json({ music: stored });
+    }
     if (b.action === 'profile') {
       const { role, color } = roleAndColor(b);
       await db

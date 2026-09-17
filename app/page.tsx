@@ -29,11 +29,13 @@ import { unlockSound, setSoundEnabled } from '@/lib/dice-audio';
 import type { Motion, TableBounds } from '@/lib/dice-physics';
 import ActionBar from '@/components/action-bar';
 import Soundboard from '@/components/soundboard';
+import MusicPlayer from '@/components/music-player';
 import RollReveal from '@/components/roll-reveal';
 import type { ActionRollOptions } from '@/lib/action-damage';
 import { SIDES, parseExpression, type Roll } from '@/lib/dice';
 import { DEFAULT_ROLE_ID, DEFAULT_CUSTOM_COLOR, CUSTOM_ROLE_ID, roleById, isRoleId, type RoleId } from '@/lib/roles';
 import { RoleBadge, RolePicker } from '@/components/role-picker';
+import { defaultMusic, type MusicState } from '@/lib/music';
 type Player = { id: string; name: string; color: string; role: string | null; seen: number };
 type Credential = { id: string; secret: string };
 export default function Home() {
@@ -50,7 +52,8 @@ export default function Home() {
     [customColor, setCustomColor] = useState(DEFAULT_CUSTOM_COLOR),
     [players, setPlayers] = useState<Player[]>([]),
     [history, setHistory] = useState<Roll[]>([]),
-    [active, setActive] = useState<Roll | null>(null);
+    [active, setActive] = useState<Roll | null>(null),
+    [music, setMusic] = useState<MusicState>(defaultMusic());
   const color = role === CUSTOM_ROLE_ID ? customColor : (roleById(role)?.color ?? DEFAULT_CUSTOM_COLOR);
   const [expression, setExpression] = useState('1d20'),
     [label, setLabel] = useState(''),
@@ -205,12 +208,14 @@ export default function Home() {
     setFresh(false);
     setSettledId('');
     setActive(null);
+    setMusic(defaultMusic());
     setConnected(false);
     const poll = async () => {
       try {
         const data = await api();
         if (stopped) return;
         setRoomName(data.room.name);
+        setMusic(data.room.music);
         setPlayers(data.players);
         ingest(data.rolls, !initial.current);
         if (initial.current && !overlay && data.rolls.length)
@@ -349,6 +354,13 @@ export default function Home() {
       setBusy(false);
     }
   }
+  const updateMusic = useCallback(
+    async (next: Omit<MusicState, 'updated'>) => {
+      const data = await api({ action: 'music', ...next });
+      setMusic(data.music);
+    },
+    [api],
+  );
   function url(asOverlay = false) {
     return (
       location.origin +
@@ -433,6 +445,7 @@ export default function Home() {
             <ActionBar expression={expression} disabled={busy || !connected}
               color={color} role={role} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
             {role === 'dm' && <Soundboard />}
+            <MusicPlayer music={music} isDm={role === 'dm'} disabled={!connected} onUpdate={updateMusic} />
           </>}
           <small>{surface === 'hotbar' ? 'Roll here. Choose Interact with table to drag dice or move the table window.' : 'Drag to move. Throw firmly to record a new roll.'}</small>
         </section>}
@@ -629,6 +642,7 @@ export default function Home() {
                 <ActionBar expression={expression} disabled={busy || !connected}
                   color={color} role={role} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
                 {role === 'dm' && <Soundboard />}
+                <MusicPlayer music={music} isDm={role === 'dm'} disabled={!connected} onUpdate={updateMusic} />
                 <section className="roller">
                   <div className="section-heading">
                     <h2>Make a roll</h2>
