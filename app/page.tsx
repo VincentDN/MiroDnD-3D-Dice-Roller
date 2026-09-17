@@ -38,6 +38,8 @@ import { SIDES, parseExpression, type Roll } from '@/lib/dice';
 import { DEFAULT_ROLE_ID, DEFAULT_CUSTOM_COLOR, CUSTOM_ROLE_ID, roleById, isRoleId, type RoleId } from '@/lib/roles';
 import { RoleBadge, RolePicker } from '@/components/role-picker';
 import { defaultMusic, type MusicState } from '@/lib/music';
+import EffectsPanel, { useEffects } from '@/components/effects-panel';
+import { applyEffects, consumeEffects } from '@/lib/effects';
 type Player = { id: string; name: string; color: string; role: string | null; seen: number };
 type Credential = { id: string; secret: string };
 export default function Home() {
@@ -56,6 +58,7 @@ export default function Home() {
     [history, setHistory] = useState<Roll[]>([]),
     [active, setActive] = useState<Roll | null>(null),
     [music, setMusic] = useState<MusicState>(defaultMusic());
+  const [effects, updateEffects] = useEffects(key, cred?.id);
   const color = role === CUSTOM_ROLE_ID ? customColor : (roleById(role)?.color ?? DEFAULT_CUSTOM_COLOR);
   const [expression, setExpression] = useState('1d20'),
     [label, setLabel] = useState(''),
@@ -278,18 +281,27 @@ export default function Home() {
       if (!cred) throw Error('Join this room first.');
       setBusy(true);
       setError('');
+      // Effects (advantage/disadvantage, Bless/Guidance/...) only ever apply
+      // to a primary check/attack/save roll, never a linked damage roll.
+      const applyFx = !options?.linkedTo;
+      const { expression: finalRaw, consumed } = applyFx
+        ? applyEffects(raw, effects)
+        : { expression: raw, consumed: [] as string[] };
       try {
-        parseExpression(raw);
+        parseExpression(finalRaw);
         unlockSound();
-        if (!quick) setPendingExpression(raw);
+        if (!quick) setPendingExpression(finalRaw);
         if (
           !retry.current ||
-          retry.current.expression !== raw ||
+          retry.current.expression !== finalRaw ||
           retry.current.label !== rollLabel || retry.current.quick !== quick || JSON.stringify(retry.current.options) !== JSON.stringify(options)
         )
-          retry.current = { id: crypto.randomUUID(), expression: raw, label: rollLabel, options, quick };
+          retry.current = { id: crypto.randomUUID(), expression: finalRaw, label: rollLabel, options, quick };
         const data = await api({ action: 'roll', ...retry.current, ...options, diceScale: desktop ? 2 : 1.5, aspect: trayAspect.current });
         retry.current = null;
+        // Only a request that genuinely succeeded spends a one-use effect -
+        // a failed attempt (or its retry) neither loses nor double-spends one.
+        if (consumed.length) updateEffects(consumeEffects(effects, consumed));
         ingest([data]);
         return { id: data.id, total: data.total, dice: data.dice };
       } catch (e) {
@@ -300,7 +312,7 @@ export default function Home() {
         setPendingExpression(undefined);
       }
     },
-    [cred, expression, label, api, ingest, desktop],
+    [cred, expression, label, api, ingest, desktop, effects, updateEffects],
   );
   useEffect(() => {
     const context = (document as any).modelContext;
@@ -455,6 +467,7 @@ export default function Home() {
               </form>
               <p className="desktop-result">{pendingExpression ? 'Rolling…' : active ? `${active.name}: ${active.expression}${settledId===active.id ? ` = ${active.total}` : " · rolling…"}` : 'Ready to roll'}</p>
             </div>
+            <EffectsPanel effects={effects} update={updateEffects} />
             <ActionBar expression={expression} disabled={busy || !connected}
               color={color} role={role} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
             {role === 'dm' && <Soundboard />}
@@ -657,6 +670,7 @@ export default function Home() {
                     )}
                   </div>
                 </div>
+                <EffectsPanel effects={effects} update={updateEffects} />
                 <ActionBar expression={expression} disabled={busy || !connected}
                   color={color} role={role} onRoll={(raw, title, options) => { setExpression(raw); setLabel(title); return roll(raw, title, options); }} />
                 {role === 'dm' && <Soundboard />}
@@ -745,6 +759,11 @@ export default function Home() {
                       {hideRoll ? <EyeOff size={14} /> : <Eye size={14} />}
                       Hide from party <span className="muted"> · only you and the DM see it</span>
                     </label>
+                    {applyEffects(expression, effects).changed && (
+                      <p className="effects-preview">
+                        Will roll <code>{applyEffects(expression, effects).expression}</code>
+                      </p>
+                    )}
                     <div className="roll-bottom">
                       <label>
                         Roll label <span className="muted"> · optional</span>

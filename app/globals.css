@@ -352,3 +352,25 @@
 .hidden-roll-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--offline); }
 .reveal-roll { border:1px solid var(--border); background:none; color:var(--text-soft); border-radius:5px; padding:2px 7px; font-size:11px; cursor:pointer; }
 .reveal-roll:hover { border-color:var(--accent); color:var(--accent); }
+.effects-preview { font-size:12px; color:var(--text-soft); margin:-10px 0 18px; }
+.effects-preview code { color:var(--roll-code); }
+
+/* Temporary roll effects: advantage/disadvantage + named bonus dice */
+.effects-panel { min-width:0; padding:16px; margin:12px 0; background:var(--bg-panel); color:var(--text); border:1px solid var(--border); border-radius:10px; display:flex; flex-direction:column; gap:10px; }
+.effects-advantage { display:flex; gap:6px; }
+.effects-advantage button { flex:1; border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:6px; padding:7px; font-size:12px; cursor:pointer; }
+.effects-advantage button.selected { border-color:var(--accent); color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,var(--bg-input)); }
+.effects-list { display:flex; flex-wrap:wrap; gap:6px; }
+.effect-chip { display:inline-flex; align-items:stretch; border:1px solid var(--border); border-radius:6px; background:var(--bg-input); overflow:hidden; }
+.effect-chip button:first-child { border:0; background:none; color:var(--text-soft); padding:6px 9px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; }
+.effect-chip button:first-child small { color:var(--text-faint); }
+.effect-chip button:first-child em { font-style:normal; font-size:10px; color:var(--text-faint); border:1px solid var(--border); border-radius:8px; padding:0 4px; }
+.effect-chip.active { border-color:var(--accent); }
+.effect-chip.active button:first-child { color:var(--accent); }
+.effect-chip button:last-child { border:0; border-left:1px solid var(--border); background:none; color:var(--text-faint); padding:6px; cursor:pointer; }
+.effect-add-form { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.effect-add-form input[type=text],.effect-add-form input:not([type]) { flex:1; min-width:90px; margin:0; padding:6px 8px; font-size:12px; }
+.effect-add-form label { display:flex; align-items:center; gap:5px; font-size:12px; width:auto; color:var(--text-soft); }
+.effect-add-form label input { width:auto; margin:0; }
+.effect-add-form button[type=submit] { border:1px solid var(--border); background:var(--bg-input); color:var(--text); border-radius:6px; padding:6px 10px; font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; }
+.rpg-hotbar .effects-panel { padding:8px; margin:0; }

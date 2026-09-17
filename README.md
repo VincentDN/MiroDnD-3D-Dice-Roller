@@ -35,6 +35,10 @@ Both the browser room and Windows overlay offer a **Character actions** bar. Ope
 
 Collections support up to 12 characters and 30 actions per character. Existing saved combinations are automatically copied into **My character**, with the old data retained as a backup. Actions are saved on this device and synchronize between windows of the same browser/app. Browser and Windows app storage are separate: use **Export characters** / **Import characters** to transfer your JSON collection. Imports add characters without replacing existing ones; malformed files are rejected. The file contains no room invitations, player credentials or roll history.
 
+## Roll effects
+
+The **Roll effects** panel gives every player a persistent Advantage/Normal/Disadvantage toggle plus named bonus-die effects (Bless, Guidance, Bardic Inspiration, or any custom one you add) that apply to any subsequent roll - the free-form form, Quickroll, or a saved action - until you turn them off. A **persistent** effect (Bless) stays active across rolls; a **one-use** effect (Guidance, Bardic Inspiration) turns itself off the moment it's spent on a successful roll, and never spends itself on a failed or retried request. Advantage/disadvantage only transforms a plain `1d20` roll - never a saved action already shaped like `2d20kh1+5`, and never a linked damage roll - and a live preview always shows the exact expression about to be rolled before you commit to it. Effects are saved on this device per room and character, like the roll notebook.
+
 ## DM soundboard
 
 The DM role gets an extra **Soundboard** section next to the character actions: a handful of fun synthesized cues (drumroll, dramatic sting, applause, sad trombone, rimshot) to play at the table, defined alongside the rest of the dice audio in `lib/dice-audio.ts`. No external audio files - everything is generated with the Web Audio API, same as the existing dice and result sounds.
